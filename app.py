@@ -77,7 +77,7 @@ def obtener_tarea_plan(doc, nombre_plan):
 def generar_queries_sql_con_gemini(
     texto_sunat, tipo_operacion="INSERT", ticket="123456", estado_previo="BAJA DE OFICIO"
 ):
-  prompt_sistema = f"""
+    prompt_sistema = f"""
     Eres un DBA experto en SQL Server para sistemas peruanos.
     Tu trabajo es procesar texto copiado de consultas RUC de SUNAT y generar exclusivamente scripts SQL.
 
@@ -114,12 +114,42 @@ def generar_queries_sql_con_gemini(
     7. Para ROLLBACK de UPDATE: usa `update sunat_contribuyente set estado = '{estado_previo}', fecha_actualizacion = getdate() where numero_ruc = '...';`
     """
 
-  prompt_usuario = f"""
+    prompt_usuario = f"""
     TIPO OPERACIÓN: {tipo_operacion}
     TEXTO SUNAT:
     {texto_sunat}
     """
 
+    # Llamada a Gemini usando el modelo activo
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt_usuario,
+        config={"system_instruction": prompt_sistema},
+    )
+
+    # Validar que la respuesta contenga texto antes de desempaquetar
+    if not response or not hasattr(response, "text") or not response.text:
+        raise ValueError("La API de Gemini devolvió una respuesta vacía o fue bloqueada por filtros.")
+
+    texto_respuesta = response.text
+
+    # Manejo seguro de la separación
+    if "===ROLLBACK_SEPARADOR===" in texto_respuesta:
+        partes = texto_respuesta.split("===ROLLBACK_SEPARADOR===")
+        q_prod = partes[0].strip()
+        q_roll = partes[1].strip() if len(partes) > 1 else ""
+    else:
+        q_prod = texto_respuesta.strip()
+        q_roll = "-- No se generó query de rollback"
+
+    # Limpieza de sintaxis markdown si la IA incluyó ```sql
+    q_prod = re.sub(r"^```sql\n?|^```\n?", "", q_prod, flags=re.MULTILINE)
+    q_prod = re.sub(r"\n?```$", "", q_prod, flags=re.MULTILINE)
+
+    q_roll = re.sub(r"^```sql\n?|^```\n?", "", q_roll, flags=re.MULTILINE)
+    q_roll = re.sub(r"\n?```$", "", q_roll, flags=re.MULTILINE)
+
+    return q_prod, q_roll
   # Llamada a Gemini 2.5 Flash usando el cliente oficial
 # Puedes ejecutar esto en tu terminal o agregar un st.write temporal en Streamlit:
 if client:
