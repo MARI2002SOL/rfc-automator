@@ -20,6 +20,9 @@ except Exception:
 # ==========================================
 # FUNCIONES HELPER - PARTE 1 (DOCX & TXT)
 # ==========================================
+import time
+
+
 def generar_queries_sql_con_gemini(
     texto_sunat,
     tipo_operacion="INSERT",
@@ -69,27 +72,47 @@ def generar_queries_sql_con_gemini(
     {texto_sunat}
     """
 
-  # Intenta con 2.0-flash, si agotas la cuota (429) pasa automáticamente a 1.5-flash
-  try:
-    response = client.models.generate_content(
-        model="gemini-2.0-flash",
-        contents=prompt_usuario,
-        config={"system_instruction": prompt_sistema},
-    )
-  except Exception as err:
-    if "429" in str(err) or "RESOURCE_EXHAUSTED" in str(err):
+  # Lista de modelos oficiales en orden de preferencia
+  modelos_disponibles = ["gemini-2.5-flash", "gemini-1.5-flash"]
+  response = None
+  ultimo_error = None
+
+  for modelo in modelos_disponibles:
+    try:
       response = client.models.generate_content(
-          model="gemini-1.5-flash",
+          model=modelo,
           contents=prompt_usuario,
           config={"system_instruction": prompt_sistema},
       )
-    else:
-      raise err
+      break  # Si la llamada fue exitosa, sale del bucle
+    except Exception as err:
+      str_err = str(err)
+      ultimo_error = err
+      # Si el error es por límite de tasa (429), hace una breve pausa de 3 segundos y reintenta
+      if "429" in str_err or "RESOURCE_EXHAUSTED" in str_err:
+        time.sleep(3)
+        try:
+          response = client.models.generate_content(
+              model=modelo,
+              contents=prompt_usuario,
+              config={"system_instruction": prompt_sistema},
+          )
+          break
+        except Exception as retry_err:
+          ultimo_error = retry_err
+          continue
+      else:
+        continue
 
+  if not response:
+    raise ultimo_error
+
+  # Procesar la respuesta obtenida
   partes = response.text.split("===ROLLBACK_SEPARADOR===")
   q_prod = partes[0].strip() if len(partes) > 0 else response.text.strip()
   q_roll = partes[1].strip() if len(partes) > 1 else ""
 
+  # Limpieza de markdown redundante
   q_prod = re.sub(r"^```sql\n?|^```\n?", "", q_prod, flags=re.MULTILINE)
   q_prod = re.sub(r"\n?```$", "", q_prod, flags=re.MULTILINE)
 
