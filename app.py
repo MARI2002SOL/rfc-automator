@@ -5,23 +5,79 @@ import docx
 from google import genai
 import streamlit as st
 
-
+# ==========================================
+# CONFIGURACIÓN DE GEMINI API (SDK MODERNO)
+# ==========================================
 client = None
 try:
-  gemini_api_key = st.secrets["GEMINI_API_KEY"]
-  client = genai.Client(api_key=gemini_api_key)
+    gemini_api_key = st.secrets["GEMINI_API_KEY"]
+    client = genai.Client(api_key=gemini_api_key)
 except Exception:
-  st.warning(
-      "⚠️ No se detectó 'GEMINI_API_KEY' en st.secrets. Agrega la clave para"
-      " poder usar la IA."
-  )
+    st.warning(
+        "⚠️ No se detectó 'GEMINI_API_KEY' en st.secrets. Agrega la clave para poder usar la IA."
+    )
 
 
 # ==========================================
 # FUNCIONES HELPER - PARTE 1 (DOCX & TXT)
 # ==========================================
-import time
+def reemplazar_texto_en_parrafo(parrafo, mapa_reemplazos):
+    for buscar, reemplazo in mapa_reemplazos.items():
+        if buscar in parrafo.text:
+            parrafo.text = parrafo.text.replace(buscar, reemplazo)
 
+
+def reemplazar_manteniendo_formato(doc, mapa_reemplazos):
+    """Reemplaza los marcadores en párrafos y tablas del documento Word."""
+    for parrafo in doc.paragraphs:
+        reemplazar_texto_en_parrafo(parrafo, mapa_reemplazos)
+    for tabla in doc.tables:
+        for fila in tabla.rows:
+            for celda in fila.cells:
+                for parrafo in celda.paragraphs:
+                    reemplazar_texto_en_parrafo(parrafo, mapa_reemplazos)
+
+
+def obtener_valor_exacto(doc, etiqueta_buscada):
+    """Busca el valor a la derecha o abajo de una etiqueta dada en las tablas."""
+    etiqueta_clean = etiqueta_buscada.strip().lower()
+    for tabla in doc.tables:
+        for i_fila, fila in enumerate(tabla.rows):
+            for i_celda, celda in enumerate(fila.cells):
+                texto_celda = celda.text.strip().lower()
+                if texto_celda == etiqueta_clean:
+                    if i_celda + 1 < len(fila.cells):
+                        val_derecha = fila.cells[i_celda + 1].text.strip()
+                        if val_derecha and val_derecha.lower() != texto_celda:
+                            return val_derecha
+                    if i_fila + 1 < len(tabla.rows):
+                        val_abajo = tabla.rows[i_fila + 1].cells[i_celda].text.strip()
+                        if val_abajo:
+                            return val_abajo
+    return ""
+
+
+def obtener_tarea_plan(doc, nombre_plan):
+    """Obtiene el texto de los planes de ejecución o reversión en las tablas."""
+    nombre_plan_clean = nombre_plan.strip().lower()
+    for tabla in doc.tables:
+        for fila in tabla.rows:
+            celdas_texto = []
+            for celda in fila.cells:
+                txt = celda.text.strip()
+                if not celdas_texto or celdas_texto[-1] != txt:
+                    celdas_texto.append(txt)
+            for idx, txt in enumerate(celdas_texto):
+                if nombre_plan_clean in txt.lower():
+                    for posterior in celdas_texto[idx + 1 :]:
+                        if posterior and posterior.lower() != txt.lower():
+                            return posterior
+    return ""
+
+
+# ==========================================
+# FUNCIÓN IA GEMINI - PARTE 2 (SQL RUC)
+# ==========================================
 def generar_queries_sql_con_gemini(
     texto_sunat,
     tipo_operacion="INSERT",
@@ -50,7 +106,7 @@ def generar_queries_sql_con_gemini(
     - codigo_zona (varchar) -> Nombre de la zona (si aplica)
     - estado_fila (varchar) -> 'I' si es INSERT, 'U' si es UPDATE.
 
-    INSTRUCCIONES DE FORMATO:
+    REGLAS DE OPERACIÓN:
     1. Responde ÚNICAMENTE con dos bloques separados por el delimitador "===ROLLBACK_SEPARADOR===":
        - Primero la consulta de PASE A PROD.
        - Luego el delimitador.
@@ -71,9 +127,9 @@ def generar_queries_sql_con_gemini(
     {texto_sunat}
     """
 
-    # ✅ Llamada limpia al modelo oficial actual
+    # ✅ Modelo oficial activo
     response = client.models.generate_content(
-        model="gemini-3.6-flash",
+        model="gemini-6.6-flash",
         contents=prompt_usuario,
         config={"system_instruction": prompt_sistema},
     )
@@ -90,14 +146,6 @@ def generar_queries_sql_con_gemini(
 
     return q_prod, q_roll
 
-# Llamada a Gemini 2.5 Flash usando el cliente oficial
-# Puedes ejecutar esto en tu terminal o agregar un st.write temporal en Streamlit:
-if client:
-  try:
-    modelos = [m.name for m in client.models.list()]
-    print("Modelos disponibles:", modelos)
-  except Exception as e:
-    print("Error al listar modelos:", e)
 
 # ==========================================
 # INTERFAZ STREAMLIT
@@ -109,28 +157,28 @@ tab1, tab2 = st.tabs(["1. Completar Documento RFC", "2. Generador SQL RUC"])
 
 # --- TAB 1: COMPLETAR DOCUMENTO RFC ---
 with tab1:
-  st.header("Completar Plantilla Word RFC")
+    st.header("Completar Plantilla Word RFC")
 
-  uploaded_file = st.file_uploader(
-      "Sube la Solicitud de Cambio (.docx)", type=["docx"]
-  )
-  ticket_num = st.text_input("Ingresa el N° de Ticket:", placeholder="Ej: INC123456")
+    uploaded_file = st.file_uploader(
+        "Sube la Solicitud de Cambio (.docx)", type=["docx"]
+    )
+    ticket_num = st.text_input("Ingresa el N° de Ticket:", placeholder="Ej: INC123456")
 
-  if uploaded_file and ticket_num:
-    if st.button("Procesar y Generar Archivos"):
-      doc = docx.Document(uploaded_file)
-      fecha_actual = datetime.now().strftime("%d/%m/%Y")
+    if uploaded_file and ticket_num:
+        if st.button("Procesar y Generar Archivos"):
+            doc = docx.Document(uploaded_file)
+            fecha_actual = datetime.now().strftime("%d/%m/%Y")
 
-      reemplazos = {"[FECHA DE HOY]": fecha_actual, "TICKETNUM": ticket_num}
-      reemplazar_manteniendo_formato(doc, reemplazos)
+            reemplazos = {"[FECHA DE HOY]": fecha_actual, "TICKETNUM": ticket_num}
+            reemplazar_manteniendo_formato(doc, reemplazos)
 
-      detalle_cambio = obtener_valor_exacto(doc, "Descripción")
-      plan_ejecucion = obtener_tarea_plan(doc, "ejecución")
-      plan_reversion = obtener_tarea_plan(doc, "PLAN DE REVERSIÓN")
-      descripcion_cambio = obtener_valor_exacto(doc, "MOTIVO DEL CAMBIO")
-      analista_responsable = obtener_valor_exacto(doc, "Nombre")
+            detalle_cambio = obtener_valor_exacto(doc, "Descripción")
+            plan_ejecucion = obtener_tarea_plan(doc, "ejecución")
+            plan_reversion = obtener_tarea_plan(doc, "PLAN DE REVERSIÓN")
+            descripcion_cambio = obtener_valor_exacto(doc, "MOTIVO DEL CAMBIO")
+            analista_responsable = obtener_valor_exacto(doc, "Nombre")
 
-      contenido_txt = f"""INFORMACION ADICIONAL
+            contenido_txt = f"""INFORMACION ADICIONAL
 
 Detalle del Cambio/Despliegue:
 -----------------------------------------------------------------
@@ -155,92 +203,88 @@ Analista/Especialista responsable del despliegue del cambio:
 NINGUNO
 """
 
-      buffer_docx = io.BytesIO()
-      doc.save(buffer_docx)
-      buffer_docx.seek(0)
+            buffer_docx = io.BytesIO()
+            doc.save(buffer_docx)
+            buffer_docx.seek(0)
 
-      st.success("¡Documento procesado con éxito!")
+            st.success("¡Documento procesado con éxito!")
 
-      col1, col2 = st.columns(2)
-      with col1:
-        st.download_button(
-            label="📥 Descargar Word Modificado",
-            data=buffer_docx,
-            file_name=f"RFC_Procesado_{ticket_num}.docx",
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        )
+            col1, col2 = st.columns(2)
+            with col1:
+                st.download_button(
+                    label="📥 Descargar Word Modificado",
+                    data=buffer_docx,
+                    file_name=f"RFC_Procesado_{ticket_num}.docx",
+                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                )
 
-      with col2:
-        st.download_button(
-            label="📥 Descargar TXT Información Adicional",
-            data=contenido_txt,
-            file_name="informacion_adicional.txt",
-            mime="text/plain",
-        )
+            with col2:
+                st.download_button(
+                    label="📥 Descargar TXT Información Adicional",
+                    data=contenido_txt,
+                    file_name="informacion_adicional.txt",
+                    mime="text/plain",
+                )
 
 # --- TAB 2: GENERADOR SQL RUC CON GEMINI ---
 with tab2:
-  st.header("Generador de Script SQL RUC con IA Gemini")
+    st.header("Generador de Script SQL RUC con IA Gemini")
 
-  texto_ruc = st.text_area(
-      "Pega la Consulta RUC copiada de SUNAT:", height=180
-  )
-  col_a, col_b, col_c = st.columns(3)
+    texto_ruc = st.text_area("Pega la Consulta RUC copiada de SUNAT:", height=180)
+    col_a, col_b, col_c = st.columns(3)
 
-  with col_a:
-    tipo_op = st.radio("Tipo de Operación:", ["INSERT", "UPDATE"])
-  with col_b:
-    ticket_sql = st.text_input(
-        "N° de Ticket para el script SQL:", value="INC 12776"
-    )
-  with col_c:
-    estado_prev = "BAJA DE OFICIO"
-    if tipo_op == "UPDATE":
-      estado_prev = st.text_input(
-          "Estado anterior (Solo Rollback Update):", value="BAJA DE OFICIO"
-      )
-
-  if st.button("🤖 Generar Queries con Gemini AI"):
-    if not client:
-      st.error(
-          "No se ha configurado 'GEMINI_API_KEY' en la aplicación."
-      )
-    elif not texto_ruc or not ticket_sql:
-      st.error("Por favor ingresa la consulta RUC y el número de Ticket.")
-    else:
-      with st.spinner("Procesando con Gemini AI..."):
-        try:
-          q_prod, q_rollback = generar_queries_sql_con_gemini(
-              texto_ruc, tipo_op, ticket_sql, estado_prev
-          )
-
-          st.subheader("Pase a Producción (PASE)")
-          st.code(q_prod, language="sql")
-
-          st.subheader("Rollback (ROLLBACK)")
-          st.code(q_rollback, language="sql")
-
-          if tipo_op == "INSERT":
-            nom_prod = f"query_RUC_registro - PASE A PROD ({ticket_sql}).sql"
-            nom_roll = f"query_RUC_registro - ROLLBACK ({ticket_sql}).sql"
-          else:
-            nom_prod = f"query_RUC_actualizar - PASE A PROD ({ticket_sql}).sql"
-            nom_roll = f"query_RUC_actualizar - ROLLBACK ({ticket_sql}).sql"
-
-          col1, col2 = st.columns(2)
-          with col1:
-            st.download_button(
-                label=f"📥 Descargar {nom_prod}",
-                data=q_prod,
-                file_name=nom_prod,
-                mime="text/plain",
+    with col_a:
+        tipo_op = st.radio("Tipo de Operación:", ["INSERT", "UPDATE"])
+    with col_b:
+        ticket_sql = st.text_input(
+            "N° de Ticket para el script SQL:", value="INC 12776"
+        )
+    with col_c:
+        estado_prev = "BAJA DE OFICIO"
+        if tipo_op == "UPDATE":
+            estado_prev = st.text_input(
+                "Estado anterior (Solo Rollback Update):", value="BAJA DE OFICIO"
             )
-          with col2:
-            st.download_button(
-                label=f"📥 Descargar {nom_roll}",
-                data=q_rollback,
-                file_name=nom_roll,
-                mime="text/plain",
-            )
-        except Exception as e:
-          st.error(f"Error al conectar con la API de Gemini: {e}")
+
+    if st.button("🤖 Generar Queries con Gemini AI"):
+        if not client:
+            st.error("No se ha configurado 'GEMINI_API_KEY' en la aplicación.")
+        elif not texto_ruc or not ticket_sql:
+            st.error("Por favor ingresa la consulta RUC y el número de Ticket.")
+        else:
+            with st.spinner("Procesando con Gemini AI..."):
+                try:
+                    q_prod, q_rollback = generar_queries_sql_con_gemini(
+                        texto_ruc, tipo_op, ticket_sql, estado_prev
+                    )
+
+                    st.subheader("Pase a Producción (PASE)")
+                    st.code(q_prod, language="sql")
+
+                    st.subheader("Rollback (ROLLBACK)")
+                    st.code(q_rollback, language="sql")
+
+                    if tipo_op == "INSERT":
+                        nom_prod = f"query_RUC_registro - PASE A PROD ({ticket_sql}).sql"
+                        nom_roll = f"query_RUC_registro - ROLLBACK ({ticket_sql}).sql"
+                    else:
+                        nom_prod = f"query_RUC_actualizar - PASE A PROD ({ticket_sql}).sql"
+                        nom_roll = f"query_RUC_actualizar - ROLLBACK ({ticket_sql}).sql"
+
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        st.download_button(
+                            label=f"📥 Descargar {nom_prod}",
+                            data=q_prod,
+                            file_name=nom_prod,
+                            mime="text/plain",
+                        )
+                    with col2:
+                        st.download_button(
+                            label=f"📥 Descargar {nom_roll}",
+                            data=q_rollback,
+                            file_name=nom_roll,
+                            mime="text/plain",
+                        )
+                except Exception as e:
+                    st.error(f"Error al conectar con la API de Gemini: {e}")
