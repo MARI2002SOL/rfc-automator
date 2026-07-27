@@ -181,7 +181,7 @@ with col_right:
 tipo_operacion = "INSERT"
 if uploaded_file is not None:
   nombre_archivo = uploaded_file.name.lower()
-  if "actualizac" in nombre_archivo:
+  if "actualizar" in nombre_archivo:
     tipo_operacion = "UPDATE"
   elif "registrar" in nombre_archivo or "registro" in nombre_archivo:
     tipo_operacion = "INSERT"
