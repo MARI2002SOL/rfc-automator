@@ -73,7 +73,7 @@ def generar_queries_sql_con_gemini(
 
     # ✅ Llamada limpia al modelo oficial actual
     response = client.models.generate_content(
-        model="gemini-2.5-flash",
+        model="gemini-3.6-flash",
         contents=prompt_usuario,
         config={"system_instruction": prompt_sistema},
     )
