@@ -22,14 +22,13 @@ except Exception:
 # ==========================================
 import time
 
-
 def generar_queries_sql_con_gemini(
     texto_sunat,
     tipo_operacion="INSERT",
     ticket="123456",
     estado_previo="BAJA DE OFICIO",
 ):
-  prompt_sistema = f"""
+    prompt_sistema = f"""
     Eres un DBA experto en SQL Server para sistemas peruanos.
     Tu trabajo es procesar texto copiado de consultas RUC de SUNAT y generar exclusivamente scripts SQL.
 
@@ -66,60 +65,31 @@ def generar_queries_sql_con_gemini(
     7. Para ROLLBACK de UPDATE: usa `update sunat_contribuyente set estado = '{estado_previo}', fecha_actualizacion = getdate() where numero_ruc = '...';`
     """
 
-  prompt_usuario = f"""
+    prompt_usuario = f"""
     TIPO OPERACIÓN: {tipo_operacion}
     TEXTO SUNAT:
     {texto_sunat}
     """
 
-  # Lista de modelos oficiales en orden de preferencia
-  modelos_disponibles = ["gemini-2.5-flash", "gemini-1.5-flash"]
-  response = None
-  ultimo_error = None
+    # ✅ Llamada limpia al modelo oficial actual
+    response = client.models.generate_content(
+        model="gemini-2.5-flash",
+        contents=prompt_usuario,
+        config={"system_instruction": prompt_sistema},
+    )
 
-  for modelo in modelos_disponibles:
-    try:
-      response = client.models.generate_content(
-          model=modelo,
-          contents=prompt_usuario,
-          config={"system_instruction": prompt_sistema},
-      )
-      break  # Si la llamada fue exitosa, sale del bucle
-    except Exception as err:
-      str_err = str(err)
-      ultimo_error = err
-      # Si el error es por límite de tasa (429), hace una breve pausa de 3 segundos y reintenta
-      if "429" in str_err or "RESOURCE_EXHAUSTED" in str_err:
-        time.sleep(3)
-        try:
-          response = client.models.generate_content(
-              model=modelo,
-              contents=prompt_usuario,
-              config={"system_instruction": prompt_sistema},
-          )
-          break
-        except Exception as retry_err:
-          ultimo_error = retry_err
-          continue
-      else:
-        continue
+    partes = response.text.split("===ROLLBACK_SEPARADOR===")
+    q_prod = partes[0].strip() if len(partes) > 0 else response.text.strip()
+    q_roll = partes[1].strip() if len(partes) > 1 else ""
 
-  if not response:
-    raise ultimo_error
+    q_prod = re.sub(r"^```sql\n?|^```\n?", "", q_prod, flags=re.MULTILINE)
+    q_prod = re.sub(r"\n?```$", "", q_prod, flags=re.MULTILINE)
 
-  # Procesar la respuesta obtenida
-  partes = response.text.split("===ROLLBACK_SEPARADOR===")
-  q_prod = partes[0].strip() if len(partes) > 0 else response.text.strip()
-  q_roll = partes[1].strip() if len(partes) > 1 else ""
+    q_roll = re.sub(r"^```sql\n?|^```\n?", "", q_roll, flags=re.MULTILINE)
+    q_roll = re.sub(r"\n?```$", "", q_roll, flags=re.MULTILINE)
 
-  # Limpieza de markdown redundante
-  q_prod = re.sub(r"^```sql\n?|^```\n?", "", q_prod, flags=re.MULTILINE)
-  q_prod = re.sub(r"\n?```$", "", q_prod, flags=re.MULTILINE)
+    return q_prod, q_roll
 
-  q_roll = re.sub(r"^```sql\n?|^```\n?", "", q_roll, flags=re.MULTILINE)
-  q_roll = re.sub(r"\n?```$", "", q_roll, flags=re.MULTILINE)
-
-  return q_prod, q_roll
 # Llamada a Gemini 2.5 Flash usando el cliente oficial
 # Puedes ejecutar esto en tu terminal o agregar un st.write temporal en Streamlit:
 if client:
