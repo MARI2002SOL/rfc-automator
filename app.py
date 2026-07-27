@@ -20,64 +20,13 @@ except Exception:
 # ==========================================
 # FUNCIONES HELPER - PARTE 1 (DOCX & TXT)
 # ==========================================
-def reemplazar_texto_en_parrafo(parrafo, mapa_reemplazos):
-  for buscar, reemplazo in mapa_reemplazos.items():
-    if buscar in parrafo.text:
-      parrafo.text = parrafo.text.replace(buscar, reemplazo)
-
-
-def reemplazar_manteniendo_formato(doc, mapa_reemplazos):
-  for parrafo in doc.paragraphs:
-    reemplazar_texto_en_parrafo(parrafo, mapa_reemplazos)
-  for tabla in doc.tables:
-    for fila in tabla.rows:
-      for celda in fila.cells:
-        for parrafo in celda.paragraphs:
-          reemplazar_texto_en_parrafo(parrafo, mapa_reemplazos)
-
-
-def obtener_valor_exacto(doc, etiqueta_buscada):
-  etiqueta_clean = etiqueta_buscada.strip().lower()
-  for tabla in doc.tables:
-    for i_fila, fila in enumerate(tabla.rows):
-      for i_celda, celda in enumerate(fila.cells):
-        texto_celda = celda.text.strip().lower()
-        if texto_celda == etiqueta_clean:
-          if i_celda + 1 < len(fila.cells):
-            val_derecha = fila.cells[i_celda + 1].text.strip()
-            if val_derecha and val_derecha.lower() != texto_celda:
-              return val_derecha
-          if i_fila + 1 < len(tabla.rows):
-            val_abajo = tabla.rows[i_fila + 1].cells[i_celda].text.strip()
-            if val_abajo:
-              return val_abajo
-  return ""
-
-
-def obtener_tarea_plan(doc, nombre_plan):
-  nombre_plan_clean = nombre_plan.strip().lower()
-  for tabla in doc.tables:
-    for fila in tabla.rows:
-      celdas_texto = []
-      for celda in fila.cells:
-        txt = celda.text.strip()
-        if not celdas_texto or celdas_texto[-1] != txt:
-          celdas_texto.append(txt)
-      for idx, txt in enumerate(celdas_texto):
-        if nombre_plan_clean in txt.lower():
-          for posterior in celdas_texto[idx + 1 :]:
-            if posterior and posterior.lower() != txt.lower():
-              return posterior
-  return ""
-
-
-# ==========================================
-# FUNCIÓN IA GEMINI - PARTE 2 (SQL RUC)
-# ==========================================
 def generar_queries_sql_con_gemini(
-    texto_sunat, tipo_operacion="INSERT", ticket="123456", estado_previo="BAJA DE OFICIO"
+    texto_sunat,
+    tipo_operacion="INSERT",
+    ticket="123456",
+    estado_previo="BAJA DE OFICIO",
 ):
-    prompt_sistema = f"""
+  prompt_sistema = f"""
     Eres un DBA experto en SQL Server para sistemas peruanos.
     Tu trabajo es procesar texto copiado de consultas RUC de SUNAT y generar exclusivamente scripts SQL.
 
@@ -114,43 +63,41 @@ def generar_queries_sql_con_gemini(
     7. Para ROLLBACK de UPDATE: usa `update sunat_contribuyente set estado = '{estado_previo}', fecha_actualizacion = getdate() where numero_ruc = '...';`
     """
 
-    prompt_usuario = f"""
+  prompt_usuario = f"""
     TIPO OPERACIÓN: {tipo_operacion}
     TEXTO SUNAT:
     {texto_sunat}
     """
 
-    # Llamada a Gemini usando el modelo activo
+  # Intenta con 2.0-flash, si agotas la cuota (429) pasa automáticamente a 1.5-flash
+  try:
     response = client.models.generate_content(
-        model="gemini-2.0-flash",  # ✅ Modelo correcto y activo
+        model="gemini-2.0-flash",
         contents=prompt_usuario,
         config={"system_instruction": prompt_sistema},
     )
-
-    # Validar que la respuesta contenga texto antes de desempaquetar
-    if not response or not hasattr(response, "text") or not response.text:
-        raise ValueError("La API de Gemini devolvió una respuesta vacía o fue bloqueada por filtros.")
-
-    texto_respuesta = response.text
-
-    # Manejo seguro de la separación
-    if "===ROLLBACK_SEPARADOR===" in texto_respuesta:
-        partes = texto_respuesta.split("===ROLLBACK_SEPARADOR===")
-        q_prod = partes[0].strip()
-        q_roll = partes[1].strip() if len(partes) > 1 else ""
+  except Exception as err:
+    if "429" in str(err) or "RESOURCE_EXHAUSTED" in str(err):
+      response = client.models.generate_content(
+          model="gemini-1.5-flash",
+          contents=prompt_usuario,
+          config={"system_instruction": prompt_sistema},
+      )
     else:
-        q_prod = texto_respuesta.strip()
-        q_roll = "-- No se generó query de rollback"
+      raise err
 
-    # Limpieza de sintaxis markdown si la IA incluyó ```sql
-    q_prod = re.sub(r"^```sql\n?|^```\n?", "", q_prod, flags=re.MULTILINE)
-    q_prod = re.sub(r"\n?```$", "", q_prod, flags=re.MULTILINE)
+  partes = response.text.split("===ROLLBACK_SEPARADOR===")
+  q_prod = partes[0].strip() if len(partes) > 0 else response.text.strip()
+  q_roll = partes[1].strip() if len(partes) > 1 else ""
 
-    q_roll = re.sub(r"^```sql\n?|^```\n?", "", q_roll, flags=re.MULTILINE)
-    q_roll = re.sub(r"\n?```$", "", q_roll, flags=re.MULTILINE)
+  q_prod = re.sub(r"^```sql\n?|^```\n?", "", q_prod, flags=re.MULTILINE)
+  q_prod = re.sub(r"\n?```$", "", q_prod, flags=re.MULTILINE)
 
-    return q_prod, q_roll
-  # Llamada a Gemini 2.5 Flash usando el cliente oficial
+  q_roll = re.sub(r"^```sql\n?|^```\n?", "", q_roll, flags=re.MULTILINE)
+  q_roll = re.sub(r"\n?```$", "", q_roll, flags=re.MULTILINE)
+
+  return q_prod, q_roll
+# Llamada a Gemini 2.5 Flash usando el cliente oficial
 # Puedes ejecutar esto en tu terminal o agregar un st.write temporal en Streamlit:
 if client:
   try:
