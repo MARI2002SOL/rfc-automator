@@ -173,8 +173,8 @@ with col_right:
       "Pega la Consulta RUC copiada de SUNAT:", height=180
   )
   estado_previo = st.text_input(
-      "Estado anterior para Rollback (si aplica UPDATE):",
-      value="BAJA DE OFICIO",
+      "Estado anterior para Rollback:",
+      value="INACTIVO",
   )
 
 # --- DETECCIÓN AUTOMÁTICA DEL TIPO DE OPERACIÓN ---
