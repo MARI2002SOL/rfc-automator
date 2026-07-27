@@ -146,37 +146,72 @@ def generar_queries_sql_con_gemini(
 
 
 # ==========================================
-# INTERFAZ STREAMLIT
+# INTERFAZ STREAMLIT (UNIFICADA)
 # ==========================================
+import zipfile
+
 st.set_page_config(page_title="Gestor RUC & RFC", page_icon="📄", layout="wide")
-st.title("📄 Sistema de Gestión RUC / RFC (Powered by Gemini AI)")
+st.title("📄 Sistema de Gestión Unificado RUC / RFC")
 
-tab1, tab2 = st.tabs(["1. Completar Documento RFC", "2. Generador SQL RUC"])
+# Inicializar Session State para evitar reinicios al hacer descargas
+if "resultado_procesado" not in st.session_state:
+  st.session_state.resultado_procesado = None
 
-# --- TAB 1: COMPLETAR DOCUMENTO RFC ---
-with tab1:
-    st.header("Completar Plantilla Word RFC")
+# --- ENTRADA DE DATOS ---
+st.header("1. Carga de Archivo y Datos")
 
-    uploaded_file = st.file_uploader(
-        "Sube la Solicitud de Cambio (.docx)", type=["docx"]
-    )
-    ticket_num = st.text_input("Ingresa el N° de Ticket:", placeholder="Ej: INC123456")
+col_left, col_right = st.columns(2)
 
-    if uploaded_file and ticket_num:
-        if st.button("Procesar y Generar Archivos"):
-            doc = docx.Document(uploaded_file)
-            fecha_actual = datetime.now().strftime("%d/%m/%Y")
+with col_left:
+  uploaded_file = st.file_uploader(
+      "Sube la Solicitud de Cambio (.docx)", type=["docx"]
+  )
+  ticket_num = st.text_input("Ingresa el N° de Ticket:", placeholder="Ej: 12776")
 
-            reemplazos = {"[FECHA DE HOY]": fecha_actual, "TICKETNUM": ticket_num}
-            reemplazar_manteniendo_formato(doc, reemplazos)
+with col_right:
+  texto_ruc = st.text_area(
+      "Pega la Consulta RUC copiada de SUNAT:", height=180
+  )
+  estado_previo = st.text_input(
+      "Estado anterior para Rollback (si aplica UPDATE):",
+      value="BAJA DE OFICIO",
+  )
 
-            detalle_cambio = obtener_valor_exacto(doc, "Descripción")
-            plan_ejecucion = obtener_tarea_plan(doc, "ejecución")
-            plan_reversion = obtener_tarea_plan(doc, "PLAN DE REVERSIÓN")
-            descripcion_cambio = obtener_valor_exacto(doc, "MOTIVO DEL CAMBIO")
-            analista_responsable = obtener_valor_exacto(doc, "Nombre")
+# --- DETECCIÓN AUTOMÁTICA DEL TIPO DE OPERACIÓN ---
+tipo_operacion = "INSERT"
+if uploaded_file is not None:
+  nombre_archivo = uploaded_file.name.lower()
+  if "actualizac" in nombre_archivo:
+    tipo_operacion = "UPDATE"
+  elif "registrar" in nombre_archivo or "registro" in nombre_archivo:
+    tipo_operacion = "INSERT"
 
-            contenido_txt = f"""INFORMACION ADICIONAL
+  st.info(
+      f"📌 **Tipo de Operación detectado automáticamente:** `{tipo_operacion}`"
+  )
+
+# --- BOTÓN DE PROCESAMIENTO ---
+if st.button("🚀 Procesar Todo y Generar Archivos"):
+  if not uploaded_file or not ticket_num or not texto_ruc:
+    st.error("Por favor completa todos los campos requeridos.")
+  elif not client:
+    st.error("No se ha configurado 'GEMINI_API_KEY' en los secretos.")
+  else:
+    with st.spinner("Procesando documento Word y generando queries SQL..."):
+      try:
+        # 1. Procesar Word y TXT
+        doc = docx.Document(uploaded_file)
+        fecha_actual = datetime.now().strftime("%d/%m/%Y")
+        reemplazos = {"[FECHA DE HOY]": fecha_actual, "TICKETNUM": ticket_num}
+        reemplazar_manteniendo_formato(doc, reemplazos)
+
+        detalle_cambio = obtener_valor_exacto(doc, "Descripción")
+        plan_ejecucion = obtener_tarea_plan(doc, "ejecución")
+        plan_reversion = obtener_tarea_plan(doc, "PLAN DE REVERSIÓN")
+        descripcion_cambio = obtener_valor_exacto(doc, "MOTIVO DEL CAMBIO")
+        analista_responsable = obtener_valor_exacto(doc, "Nombre")
+
+        contenido_txt = f"""INFORMACION ADICIONAL
 
 Detalle del Cambio/Despliegue:
 -----------------------------------------------------------------
@@ -200,89 +235,70 @@ Analista/Especialista responsable del despliegue del cambio:
 -----------------------------------------------------------------
 NINGUNO
 """
+        buffer_docx = io.BytesIO()
+        doc.save(buffer_docx)
+        buffer_docx.seek(0)
 
-            buffer_docx = io.BytesIO()
-            doc.save(buffer_docx)
-            buffer_docx.seek(0)
-
-            st.success("¡Documento procesado con éxito!")
-
-            col1, col2 = st.columns(2)
-            with col1:
-                st.download_button(
-                    label="📥 Descargar Word Modificado",
-                    data=buffer_docx,
-                    file_name=f"Solicitud de cambio Estandar - Registrar RUC{tipo_operacion}.docx",
-                    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                )
-
-            with col2:
-                st.download_button(
-                    label="📥 Descargar TXT Información Adicional",
-                    data=contenido_txt,
-                    file_name="informacion_adicional.txt",
-                    mime="text/plain",
-                )
-
-# --- TAB 2: GENERADOR SQL RUC CON GEMINI ---
-with tab2:
-    st.header("Generador de Script SQL RUC con IA Gemini")
-
-    texto_ruc = st.text_area("Pega la Consulta RUC copiada de SUNAT:", height=180)
-    col_a, col_b, col_c = st.columns(3)
-
-    with col_a:
-        tipo_op = st.radio("Tipo de Operación:", ["INSERT", "UPDATE"])
-    with col_b:
-        ticket_sql = st.text_input(
-            "N° de Ticket para el script SQL:", value="INC 12776"
+        # 2. Generar SQL mediante Gemini AI
+        q_prod, q_rollback = generar_queries_sql_con_gemini(
+            texto_ruc, tipo_operacion, ticket_num, estado_previo
         )
-    with col_c:
-        estado_prev = "BAJA DE OFICIO"
-        if tipo_op == "UPDATE":
-            estado_prev = st.text_input(
-                "Estado anterior (Solo Rollback Update):", value="BAJA DE OFICIO"
-            )
 
-    if st.button("🤖 Generar Queries con Gemini AI"):
-        if not client:
-            st.error("No se ha configurado 'GEMINI_API_KEY' en la aplicación.")
-        elif not texto_ruc or not ticket_sql:
-            st.error("Por favor ingresa la consulta RUC y el número de Ticket.")
+        # Nombres dinámicos de archivos
+        nombre_docx_out = f"{uploaded_file.name.replace('.docx', '')}_Procesado_{ticket_num}.docx"
+        if tipo_operacion == "INSERT":
+          nom_prod = f"query_RUC_registro - PASE A PROD ({ticket_num}).sql"
+          nom_roll = f"query_RUC_registro - ROLLBACK ({ticket_num}).sql"
         else:
-            with st.spinner("Procesando con Gemini AI..."):
-                try:
-                    q_prod, q_rollback = generar_queries_sql_con_gemini(
-                        texto_ruc, tipo_op, ticket_sql, estado_prev
-                    )
+          nom_prod = f"query_RUC_actualizar - PASE A PROD ({ticket_num}).sql"
+          nom_roll = f"query_RUC_actualizar - ROLLBACK ({ticket_num}).sql"
 
-                    st.subheader("Pase a Producción (PASE)")
-                    st.code(q_prod, language="sql")
+        # 3. Crear paquete ZIP con TODOS los archivos
+        zip_buffer = io.BytesIO()
+        with zipfile.ZipFile(
+            zip_buffer, "w", zipfile.ZIP_DEFLATED
+        ) as zip_file:
+          zip_file.writestr(nombre_docx_out, buffer_docx.getvalue())
+          zip_file.writestr("informacion_adicional.txt", contenido_txt)
+          zip_file.writestr(nom_prod, q_prod)
+          zip_file.writestr(nom_roll, q_rollback)
 
-                    st.subheader("Rollback (ROLLBACK)")
-                    st.code(q_rollback, language="sql")
+        zip_buffer.seek(0)
 
-                    if tipo_op == "INSERT":
-                        nom_prod = f"query_RUC_registro - PASE A PROD ({ticket_sql}).sql"
-                        nom_roll = f"query_RUC_registro - ROLLBACK ({ticket_sql}).sql"
-                    else:
-                        nom_prod = f"query_RUC_actualizar - PASE A PROD ({ticket_sql}).sql"
-                        nom_roll = f"query_RUC_actualizar - ROLLBACK ({ticket_sql}).sql"
+        # Guardar resultados en Session State
+        st.session_state.resultado_procesado = {
+            "q_prod": q_prod,
+            "q_rollback": q_rollback,
+            "zip_data": zip_buffer.getvalue(),
+            "zip_name": f"Paquete_RFC_RUC_{ticket_num}.zip",
+        }
 
-                    col1, col2 = st.columns(2)
-                    with col1:
-                        st.download_button(
-                            label=f"📥 Descargar {nom_prod}",
-                            data=q_prod,
-                            file_name=nom_prod,
-                            mime="text/plain",
-                        )
-                    with col2:
-                        st.download_button(
-                            label=f"📥 Descargar {nom_roll}",
-                            data=q_rollback,
-                            file_name=nom_roll,
-                            mime="text/plain",
-                        )
-                except Exception as e:
-                    st.error(f"Error al conectar con la API de Gemini: {e}")
+      except Exception as e:
+        st.error(f"Error durante el procesamiento: {e}")
+
+# --- VISTA PREVIA Y DESCARGA EN BLOQUE ---
+if st.session_state.resultado_procesado:
+  st.divider()
+  st.header("2. Vista Previa de Scripts SQL Generados")
+
+  res = st.session_state.resultado_procesado
+
+  col_p1, col_p2 = st.columns(2)
+  with col_p1:
+    st.subheader("Pase a Producción (PASE)")
+    st.code(res["q_prod"], language="sql")
+
+  with col_p2:
+    st.subheader("Rollback (ROLLBACK)")
+    st.code(res["q_rollback"], language="sql")
+
+  st.divider()
+  st.header("3. Confirmación y Descarga Unificada")
+
+  st.download_button(
+      label="📦 DESCARGAR TODOS LOS ARCHIVOS (.ZIP)",
+      data=res["zip_data"],
+      file_name=res["zip_name"],
+      mime="application/zip",
+      type="primary",
+  )
