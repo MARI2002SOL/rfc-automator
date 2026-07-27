@@ -121,25 +121,13 @@ def generar_queries_sql_con_gemini(
     """
 
   # Llamada a Gemini 2.5 Flash usando el cliente oficial
-# Prueba cambiando el string del modelo a uno de estos dos:
-response = client.models.generate_content(
-    model="gemini-2.0-flash",  # O prueba con "gemini-1.5-flash-8b" o "gemini-flash"
-    contents=prompt_usuario,
-    config={"system_instruction": prompt_sistema},
-)
-  partes = response.text.split("===ROLLBACK_SEPARADOR===")
-  q_prod = partes[0].strip() if len(partes) > 0 else response.text.strip()
-  q_roll = partes[1].strip() if len(partes) > 1 else ""
-
-  # Limpieza adicional por si la IA devuelve bloques markdown
-  q_prod = re.sub(r"^```sql\n?|^```\n?", "", q_prod, flags=re.MULTILINE)
-  q_prod = re.sub(r"\n?```$", "", q_prod, flags=re.MULTILINE)
-
-  q_roll = re.sub(r"^```sql\n?|^```\n?", "", q_roll, flags=re.MULTILINE)
-  q_roll = re.sub(r"\n?```$", "", q_roll, flags=re.MULTILINE)
-
-  return q_prod, q_roll
-
+# Puedes ejecutar esto en tu terminal o agregar un st.write temporal en Streamlit:
+if client:
+  try:
+    modelos = [m.name for m in client.models.list()]
+    print("Modelos disponibles:", modelos)
+  except Exception as e:
+    print("Error al listar modelos:", e)
 
 # ==========================================
 # INTERFAZ STREAMLIT
