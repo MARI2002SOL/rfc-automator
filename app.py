@@ -117,8 +117,7 @@ def generar_queries_sql_con_gemini(
        go
     4. Omite los campos que sean NULL o no existan en la información dada.
     5. NO incluyas bloques de código Markdown (```sql), devuelve solo texto plano.
-    6. Para ROLLBACK de INSERT: usa `delete from sunat_contribuyente where numero_ruc = '...';`
-    7. Para ROLLBACK de UPDATE: usa `update sunat_contribuyente set estado = '{estado_previo}', fecha_actualizacion = getdate() where numero_ruc = '...';`
+    6. Para ROLLBACK de UPDATE e INSERT: usa `update sunat_contribuyente set estado = '{estado_previo}', fecha_actualizacion = getdate() where numero_ruc = '...';`
     """
 
     prompt_usuario = f"""
