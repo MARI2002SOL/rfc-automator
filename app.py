@@ -121,12 +121,12 @@ def generar_queries_sql_con_gemini(
     """
 
   # Llamada a Gemini 2.5 Flash usando el cliente oficial
-  response = client.models.generate_content(
-      model="gemini-1.5-flash",
-      contents=prompt_usuario,
-      config={"system_instruction": prompt_sistema},
-  )
-
+# Prueba cambiando el string del modelo a uno de estos dos:
+response = client.models.generate_content(
+    model="gemini-2.0-flash",  # O prueba con "gemini-1.5-flash-8b" o "gemini-flash"
+    contents=prompt_usuario,
+    config={"system_instruction": prompt_sistema},
+)
   partes = response.text.split("===ROLLBACK_SEPARADOR===")
   q_prod = partes[0].strip() if len(partes) > 0 else response.text.strip()
   q_roll = partes[1].strip() if len(partes) > 1 else ""
