@@ -5,12 +5,9 @@ import docx
 from google import genai
 import streamlit as st
 
-# ==========================================
-# CONFIGURACIÓN DE GEMINI API (SDK MODERNO)
-# ==========================================
+
 client = None
 try:
-  # Inicializa el cliente oficial leyendo desde st.secrets
   gemini_api_key = st.secrets["GEMINI_API_KEY"]
   client = genai.Client(api_key=gemini_api_key)
 except Exception:
