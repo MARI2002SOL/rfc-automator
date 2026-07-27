@@ -17,7 +17,6 @@ except Exception:
         "⚠️ No se detectó 'GEMINI_API_KEY' en st.secrets. Agrega la clave para poder usar la IA."
     )
 
-
 # ==========================================
 # FUNCIONES HELPER - PARTE 1 (DOCX & TXT)
 # ==========================================
@@ -213,7 +212,7 @@ NINGUNO
                 st.download_button(
                     label="📥 Descargar Word Modificado",
                     data=buffer_docx,
-                    file_name=f"RFC_Procesado_{ticket_num}.docx",
+                    file_name=f"Solicitud de cambio Estandar - Registrar RUC{tipo_operacion}.docx",
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
                 )
 
