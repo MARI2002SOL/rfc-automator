@@ -81,7 +81,7 @@ def generar_queries_sql_con_gemini(
     texto_sunat,
     tipo_operacion="INSERT",
     ticket="123456",
-    estado_previo="BAJA DE OFICIO",
+    estado_previo="INACTIVO",
 ):
     prompt_sistema = f"""
     Eres un DBA experto en SQL Server para sistemas peruanos.
