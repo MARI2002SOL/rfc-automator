@@ -169,13 +169,14 @@ with col_left:
   ticket_num = st.text_input("Ingresa el N° de Ticket:", placeholder="Ej: 12776")
 
 with col_right:
-  texto_ruc = st.text_area(
-      "Pega la Consulta RUC copiada de SUNAT:", height=180
-  )
-  estado_previo = st.text_input(
-      "Estado anterior para Rollback:",
-      value="INACTIVO",
-  )
+    texto_ruc = st.text_area(
+        "Pega la Consulta RUC copiada de [SUNAT](https://e-consultaruc.sunat.gob.pe/cl-ti-itmrconsruc/FrameCriterioBusquedaWeb.jsp):",
+        height=180,
+    )
+    estado_previo = st.text_input(
+        "Estado anterior para Rollback:",
+        value="INACTIVO",
+    )
 
 # --- DETECCIÓN AUTOMÁTICA DEL TIPO DE OPERACIÓN ---
 tipo_operacion = "INSERT"
