@@ -306,9 +306,6 @@ PLAN DE REVERSIÓN (Roll-back)
   with col_fila1_2:
     st.subheader("Descripción del cambio")
     st.code(res["descripcion_cambio"], language="text")
-  with col_fila1_2:
-    st.subheader("Descripción del cambio")
-    st.code(res["descripcion_cambio"], language="text")
 
   # --- FILA 2 ---
   col_fila2_1, col_fila2_2 = st.columns(2)
