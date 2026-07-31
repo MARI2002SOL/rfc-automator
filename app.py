@@ -271,7 +271,7 @@ if st.button("🚀 Procesar Todo y Generar Archivos"):
             "q_prod": q_prod,
             "q_rollback": q_rollback,
             "zip_data": zip_buffer.getvalue(),
-            "zip_name": f"Paquete_RFC_RUC_{ticket_num}.zip",
+            "zip_name": f"RFC_RUC_{ticket_num}.zip",
         }
 
       except Exception as e:
@@ -311,20 +311,20 @@ if st.session_state.resultado_procesado:
   col_fila1_1, col_fila1_2 = st.columns(2)
 
   with col_fila1_1:
-      st.subheader("Detalle del Cambio/Despliegue")
-      # Agrupamos los 3 datos correspondientes a este bloque
-      texto_detalle = f"""{detalle_cambio}
+    st.subheader("Detalle del Cambio/Despliegue")
+    # Agrupamos los 3 datos correspondientes a este bloque
+    texto_detalle = f"""{detalle_cambio}
 
-  PLAN DE EJECUCIÓN
-  {plan_ejecucion}
+    PLAN DE EJECUCIÓN
+    {plan_ejecucion}
 
-  PLAN DE REVERSIÓN (Roll-back)
-  {plan_reversion}"""
-      st.code(texto_detalle, language="text")
+    PLAN DE REVERSIÓN (Roll-back)
+    {plan_reversion}"""
+    st.code(texto_detalle, language="text")
 
   with col_fila1_2:
-      st.subheader("Descripción del cambio")
-      st.code(f"{descripcion_cambio}", language="text")
+    st.subheader("Descripción del cambio")
+    st.code(f"{descripcion_cambio}", language="text")
 
   # --- FILA 2 ---
   col_fila2_1, col_fila2_2 = st.columns(2)
