@@ -166,11 +166,12 @@ with st.sidebar:
 
 if opcion == "Actualizar/Registrar RUC":
     rain(
-    emoji="🎈",
+    emoji="📄",
     font_size=54,
     falling_speed=5,
-    animation_length="infinite",
+    animation_length=1,
     )
+    st.session_state.animacion_mostrada = True
     st.title("📄 Sistema de Gestión Unificado RUC / RFC")
 
     # Inicializar Session State para evitar reinicios al hacer descargas
