@@ -222,7 +222,7 @@ if st.button("🚀 Procesar Todo y Generar Archivos"):
         )
 
         # Nombres dinámicos de archivos
-        nombre_docx_out = f"{uploaded_file.name.replace('.docx', '')}_Procesado_{ticket_num}.docx"
+        nombre_docx_out = f"{uploaded_file.name.replace('.docx', '')}_{ticket_num}.docx"
         if tipo_operacion == "INSERT":
           nom_prod = f"query_RUC_registro - PASE A PROD ({ticket_num}).sql"
           nom_roll = f"query_RUC_registro - ROLLBACK ({ticket_num}).sql"
