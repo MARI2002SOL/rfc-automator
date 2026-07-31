@@ -212,30 +212,30 @@ if st.button("🚀 Procesar Todo y Generar Archivos"):
         descripcion_cambio = obtener_valor_exacto(doc, "MOTIVO DEL CAMBIO")
         analista_responsable = obtener_valor_exacto(doc, "Nombre")
 
-        contenido_txt = f"""INFORMACION ADICIONAL
+#         contenido_txt = f"""INFORMACION ADICIONAL
 
-Detalle del Cambio/Despliegue:
------------------------------------------------------------------
-{detalle_cambio}
+# Detalle del Cambio/Despliegue:
+# -----------------------------------------------------------------
+# {detalle_cambio}
 
-PLAN DE EJECUCIÓN
-{plan_ejecucion}
+# PLAN DE EJECUCIÓN
+# {plan_ejecucion}
 
-PLAN DE REVERSIÓN (Roll-back)
-{plan_reversion}
+# PLAN DE REVERSIÓN (Roll-back)
+# {plan_reversion}
 
-Descripción del cambio:
------------------------------------------------------------------
-{descripcion_cambio}
+# Descripción del cambio:
+# -----------------------------------------------------------------
+# {descripcion_cambio}
 
-Analista/Especialista responsable del despliegue del cambio:
------------------------------------------------------------------
-{analista_responsable}
+# Analista/Especialista responsable del despliegue del cambio:
+# -----------------------------------------------------------------
+# {analista_responsable}
 
-¿Existe Riesgo?:
------------------------------------------------------------------
-NINGUNO
-"""
+# ¿Existe Riesgo?:
+# -----------------------------------------------------------------
+# NINGUNO
+# """
         buffer_docx = io.BytesIO()
         doc.save(buffer_docx)
         buffer_docx.seek(0)
@@ -260,7 +260,7 @@ NINGUNO
             zip_buffer, "w", zipfile.ZIP_DEFLATED
         ) as zip_file:
           zip_file.writestr(nombre_docx_out, buffer_docx.getvalue())
-          zip_file.writestr("informacion_adicional.txt", contenido_txt)
+          #zip_file.writestr("informacion_adicional.txt", contenido_txt)
           zip_file.writestr(nom_prod, q_prod)
           zip_file.writestr(nom_roll, q_rollback)
 
@@ -303,3 +303,36 @@ if st.session_state.resultado_procesado:
       mime="application/zip",
       type="primary",
   )
+
+  st.divider()
+  st.header("Información adicional")
+
+  # --- FILA 1 ---
+  col_fila1_1, col_fila1_2 = st.columns(2)
+
+  with col_fila1_1:
+      st.subheader("Detalle del Cambio/Despliegue")
+      # Agrupamos los 3 datos correspondientes a este bloque
+      texto_detalle = f"""{detalle_cambio}
+
+  PLAN DE EJECUCIÓN
+  {plan_ejecucion}
+
+  PLAN DE REVERSIÓN (Roll-back)
+  {plan_reversion}"""
+      st.code(texto_detalle, language="text")
+
+  with col_fila1_2:
+      st.subheader("Descripción del cambio")
+      st.code(f"{descripcion_cambio}", language="text")
+
+  # --- FILA 2 ---
+  col_fila2_1, col_fila2_2 = st.columns(2)
+
+  with col_fila2_1:
+    st.subheader("Analista/Especialista responsable del despliegue del cambio")
+    st.code(f"{analista_responsable}", language="text")
+
+  with col_fila2_2:
+    st.subheader("¿Existe Riesgo?")
+    st.code("NINGUNO", language="text")
