@@ -147,6 +147,8 @@ def generar_queries_sql_con_gemini(
     return q_prod, q_roll
 
 
+
+
 # ==========================================
 # INTERFAZ STREAMLIT (UNIFICADA)
 # ==========================================
@@ -165,12 +167,7 @@ with st.sidebar:
     )
 
 if opcion == "Actualizar/Registrar RUC":
-    rain(
-    emoji="📄",
-    font_size=54,
-    falling_speed=5,
-    animation_length=1,
-    )
+
     st.session_state.animacion_mostrada = True
     st.title("📄 Sistema de Gestión Unificado RUC / RFC")
 
@@ -214,6 +211,12 @@ if opcion == "Actualizar/Registrar RUC":
 
     # --- BOTÓN DE PROCESAMIENTO ---
     if st.button("🚀 Procesar Todo y Generar Archivos"):
+        rain(
+        emoji="📄",
+        font_size=54,
+        falling_speed=5,
+        animation_length=1,
+        )
         if not uploaded_file or not ticket_num or not texto_ruc:
             st.error("Por favor completa todos los campos requeridos.")
         elif not client:
@@ -358,12 +361,11 @@ elif opcion == "Actualizar credenciales":
             "Sube la Solicitud de Cambio (.docx)", type=["docx"]
         )
         ticket_num = st.text_input("Ingresa el N° de Ticket:", placeholder="Ej: 12776")
-        user_id = st.text_input("¿Cuál es el ID del usuario?", placeholder="Ej: 3333333")
         
     with col_right:
         dni_antiguo = st.text_input("¿Cuál es el número de DNI antiguo?", placeholder="Ej: 11111111")
         dni_nuevo = st.text_input("¿Cuál es el número de DNI nuevo?", placeholder="Ej: 22222222")
-
+        user_id = st.text_input("¿Cuál es el ID del usuario?", placeholder="Ej: 3333333")
 
     if uploaded_file is not None:
         nombre_esperado = "Solicitud de cambio Estandar - Actualizar credenciales.docx"
