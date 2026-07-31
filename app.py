@@ -4,6 +4,8 @@ from datetime import datetime
 import docx
 from google import genai
 import streamlit as st
+from streamlit_option_menu import option_menu
+from streamlit_extras.let_it_rain import *
 
 # ==========================================
 # CONFIGURACIÓN DE GEMINI API (SDK MODERNO)
@@ -150,170 +152,193 @@ def generar_queries_sql_con_gemini(
 # ==========================================
 import zipfile
 
+# Nota: st.set_page_config debe ser la primera instrucción de Streamlit
 st.set_page_config(page_title="Gestor RUC & RFC", page_icon="📄", layout="wide")
-st.title("📄 Sistema de Gestión Unificado RUC / RFC")
 
-# Inicializar Session State para evitar reinicios al hacer descargas
-if "resultado_procesado" not in st.session_state:
-  st.session_state.resultado_procesado = None
-
-# --- ENTRADA DE DATOS ---
-st.header("1. Carga de Archivo y Datos")
-
-col_left, col_right = st.columns(2)
-
-with col_left:
-  uploaded_file = st.file_uploader(
-      "Sube la Solicitud de Cambio (.docx)", type=["docx"]
-  )
-  ticket_num = st.text_input("Ingresa el N° de Ticket:", placeholder="Ej: 12776")
-
-with col_right:
-    texto_ruc = st.text_area(
-        "Pega la Consulta RUC copiada de [SUNAT](https://e-consultaruc.sunat.gob.pe/cl-ti-itmrconsruc/FrameCriterioBusquedaWeb.jsp):",
-        height=180,
-    )
-    estado_previo = st.text_input(
-        "Estado anterior para Rollback:",
-        value="INACTIVO",
+with st.sidebar:
+    opcion = option_menu(
+        menu_title="Menú Principal",  # Título del menú
+        options=["Actualizar/Registrar RUC", "Proyectos", "Contacto"],  # Opciones
+        icons=["house", "folder", "envelope"],  # Iconos de Bootstrap
+        menu_icon="cast",  # Icono del título
+        default_index=0,  # Opción seleccionada por defecto
     )
 
-# --- DETECCIÓN AUTOMÁTICA DEL TIPO DE OPERACIÓN ---
-tipo_operacion = "INSERT"
-if uploaded_file is not None:
-  nombre_archivo = uploaded_file.name.lower()
-  if "actualizar" in nombre_archivo:
-    tipo_operacion = "UPDATE"
-  elif "registrar" in nombre_archivo or "registro" in nombre_archivo:
-    tipo_operacion = "INSERT"
+if opcion == "Actualizar/Registrar RUC":
+    rain(
+    emoji="🎈",
+    font_size=54,
+    falling_speed=5,
+    animation_length="infinite",
+    )
+    st.title("📄 Sistema de Gestión Unificado RUC / RFC")
 
-  st.info(
-      f"📌 **Tipo de Operación detectado automáticamente:** `{tipo_operacion}`"
-  )
+    # Inicializar Session State para evitar reinicios al hacer descargas
+    if "resultado_procesado" not in st.session_state:
+        st.session_state.resultado_procesado = None
 
-# --- BOTÓN DE PROCESAMIENTO ---
-if st.button("🚀 Procesar Todo y Generar Archivos"):
-  if not uploaded_file or not ticket_num or not texto_ruc:
-    st.error("Por favor completa todos los campos requeridos.")
-  elif not client:
-    st.error("No se ha configurado 'GEMINI_API_KEY' en los secretos.")
-  else:
-    with st.spinner("Procesando documento Word y generando queries SQL..."):
-      try:
-        # 1. Procesar Word y TXT
-        doc = docx.Document(uploaded_file)
-        fecha_actual = datetime.now().strftime("%d/%m/%Y")
-        reemplazos = {"[FECHA DE HOY]": fecha_actual, "TICKETNUM": ticket_num}
-        reemplazar_manteniendo_formato(doc, reemplazos)
+    # --- ENTRADA DE DATOS ---
+    st.header("1. Carga de Archivo y Datos")
 
-        detalle_cambio = obtener_valor_exacto(doc, "Descripción")
-        plan_ejecucion = obtener_tarea_plan(doc, "ejecución")
-        plan_reversion = obtener_tarea_plan(doc, "PLAN DE REVERSIÓN")
-        descripcion_cambio = obtener_valor_exacto(doc, "MOTIVO DEL CAMBIO")
-        analista_responsable = obtener_valor_exacto(doc, "Nombre")
+    col_left, col_right = st.columns(2)
 
-        buffer_docx = io.BytesIO()
-        doc.save(buffer_docx)
-        buffer_docx.seek(0)
+    with col_left:
+        uploaded_file = st.file_uploader(
+            "Sube la Solicitud de Cambio (.docx)", type=["docx"]
+        )
+        ticket_num = st.text_input("Ingresa el N° de Ticket:", placeholder="Ej: 12776")
 
-        # 2. Generar SQL mediante Gemini AI
-        q_prod, q_rollback = generar_queries_sql_con_gemini(
-            texto_ruc, tipo_operacion, ticket_num, estado_previo
+    with col_right:
+        texto_ruc = st.text_area(
+            "Pega la Consulta RUC copiada de [SUNAT](https://e-consultaruc.sunat.gob.pe/cl-ti-itmrconsruc/FrameCriterioBusquedaWeb.jsp):",
+            height=180,
+        )
+        estado_previo = st.text_input(
+            "Estado anterior para Rollback:",
+            value="INACTIVO",
         )
 
-        # Nombres dinámicos de archivos
-        nombre_docx_out = f"{uploaded_file.name.replace('.docx', '')}_{ticket_num}.docx"
-        if tipo_operacion == "INSERT":
-          nom_prod = f"query_RUC_registro - PASE A PROD ({ticket_num}).sql"
-          nom_roll = f"query_RUC_registro - ROLLBACK ({ticket_num}).sql"
+    # --- DETECCIÓN AUTOMÁTICA DEL TIPO DE OPERACIÓN ---
+    tipo_operacion = "INSERT"
+    if uploaded_file is not None:
+        nombre_archivo = uploaded_file.name.lower()
+        if "actualizar" in nombre_archivo:
+            tipo_operacion = "UPDATE"
+        elif "registrar" in nombre_archivo or "registro" in nombre_archivo:
+            tipo_operacion = "INSERT"
+
+    st.info(
+        f"📌 **Tipo de Operación detectado automáticamente:** `{tipo_operacion}`"
+    )
+
+    # --- BOTÓN DE PROCESAMIENTO ---
+    if st.button("🚀 Procesar Todo y Generar Archivos"):
+        if not uploaded_file or not ticket_num or not texto_ruc:
+            st.error("Por favor completa todos los campos requeridos.")
+        elif not client:
+            st.error("No se ha configurado 'GEMINI_API_KEY' en los secretos.")
         else:
-          nom_prod = f"query_RUC_actualizar - PASE A PROD ({ticket_num}).sql"
-          nom_roll = f"query_RUC_actualizar - ROLLBACK ({ticket_num}).sql"
+            with st.spinner("Procesando documento Word y generando queries SQL..."):
+                try:
+                    # 1. Procesar Word y TXT
+                    doc = docx.Document(uploaded_file)
+                    fecha_actual = datetime.now().strftime("%d/%m/%Y")
+                    reemplazos = {"[FECHA DE HOY]": fecha_actual, "TICKETNUM": ticket_num}
+                    reemplazar_manteniendo_formato(doc, reemplazos)
 
-        # 3. Crear paquete ZIP con TODOS los archivos
-        zip_buffer = io.BytesIO()
-        with zipfile.ZipFile(
-            zip_buffer, "w", zipfile.ZIP_DEFLATED
-        ) as zip_file:
-          zip_file.writestr(nombre_docx_out, buffer_docx.getvalue())
-          #zip_file.writestr("informacion_adicional.txt", contenido_txt)
-          zip_file.writestr(nom_prod, q_prod)
-          zip_file.writestr(nom_roll, q_rollback)
+                    detalle_cambio = obtener_valor_exacto(doc, "Descripción")
+                    plan_ejecucion = obtener_tarea_plan(doc, "ejecución")
+                    plan_reversion = obtener_tarea_plan(doc, "PLAN DE REVERSIÓN")
+                    descripcion_cambio = obtener_valor_exacto(doc, "MOTIVO DEL CAMBIO")
+                    analista_responsable = obtener_valor_exacto(doc, "Nombre")
 
-        zip_buffer.seek(0)
+                    buffer_docx = io.BytesIO()
+                    doc.save(buffer_docx)
+                    buffer_docx.seek(0)
 
-        # Guardar resultados en Session State
-        st.session_state.resultado_procesado = {
-            "q_prod": q_prod,
-            "q_rollback": q_rollback,
-            "zip_data": zip_buffer.getvalue(),
-            "zip_name": f"RFC_RUC_{ticket_num}.zip",
-            "detalle_cambio": detalle_cambio,
-            "plan_ejecucion": plan_ejecucion,
-            "plan_reversion": plan_reversion,
-            "descripcion_cambio": descripcion_cambio,
-            "analista_responsable": analista_responsable
-        }
+                    # 2. Generar SQL mediante Gemini AI
+                    q_prod, q_rollback = generar_queries_sql_con_gemini(
+                        texto_ruc, tipo_operacion, ticket_num, estado_previo
+                    )
 
-      except Exception as e:
-        st.error(f"Error durante el procesamiento: {e}")
+                    # Nombres dinámicos de archivos
+                    nombre_docx_out = f"{uploaded_file.name.replace('.docx', '')}_{ticket_num}.docx"
+                    if tipo_operacion == "INSERT":
+                        nom_prod = f"query_RUC_registro - PASE A PROD ({ticket_num}).sql"
+                        nom_roll = f"query_RUC_registro - ROLLBACK ({ticket_num}).sql"
+                    else:
+                        nom_prod = f"query_RUC_actualizar - PASE A PROD ({ticket_num}).sql"
+                        nom_roll = f"query_RUC_actualizar - ROLLBACK ({ticket_num}).sql"
 
-# --- VISTA PREVIA Y DESCARGA EN BLOQUE ---
-if st.session_state.resultado_procesado:
-  st.divider()
-  st.header("2. Vista Previa de Scripts SQL Generados")
+                    # 3. Crear paquete ZIP con TODOS los archivos
+                    zip_buffer = io.BytesIO()
+                    with zipfile.ZipFile(
+                        zip_buffer, "w", zipfile.ZIP_DEFLATED
+                    ) as zip_file:
+                        zip_file.writestr(nombre_docx_out, buffer_docx.getvalue())
+                        # zip_file.writestr("informacion_adicional.txt", contenido_txt)
+                        zip_file.writestr(nom_prod, q_prod)
+                        zip_file.writestr(nom_roll, q_rollback)
 
-  res = st.session_state.resultado_procesado
+                    zip_buffer.seek(0)
 
-  col_p1, col_p2 = st.columns(2)
-  with col_p1:
-    st.subheader("Pase a Producción (PASE)")
-    st.code(res["q_prod"], language="sql")
+                    # Guardar resultados en Session State
+                    st.session_state.resultado_procesado = {
+                        "q_prod": q_prod,
+                        "q_rollback": q_rollback,
+                        "zip_data": zip_buffer.getvalue(),
+                        "zip_name": f"RFC_RUC_{ticket_num}.zip",
+                        "detalle_cambio": detalle_cambio,
+                        "plan_ejecucion": plan_ejecucion,
+                        "plan_reversion": plan_reversion,
+                        "descripcion_cambio": descripcion_cambio,
+                        "analista_responsable": analista_responsable
+                    }
 
-  with col_p2:
-    st.subheader("Rollback (ROLLBACK)")
-    st.code(res["q_rollback"], language="sql")
+                except Exception as e:
+                    st.error(f"Error durante el procesamiento: {e}")
 
-  st.divider()
-  st.header("3. Confirmación y Descarga Unificada")
+    # --- VISTA PREVIA Y DESCARGA EN BLOQUE ---
+    if st.session_state.resultado_procesado:
+        st.divider()
+        st.header("2. Vista Previa de Scripts SQL Generados")
 
-  st.download_button(
-      label="📦 DESCARGAR TODOS LOS ARCHIVOS (.ZIP)",
-      data=res["zip_data"],
-      file_name=res["zip_name"],
-      mime="application/zip",
-      type="primary",
-  )
+        res = st.session_state.resultado_procesado
 
-  st.divider()
-  st.header("Información adicional")
+        col_p1, col_p2 = st.columns(2)
+        with col_p1:
+            st.subheader("Pase a Producción (PASE)")
+            st.code(res["q_prod"], language="sql")
 
-  # --- FILA 1 ---
-  col_fila1_1, col_fila1_2 = st.columns(2)
+        with col_p2:
+            st.subheader("Rollback (ROLLBACK)")
+            st.code(res["q_rollback"], language="sql")
 
-  with col_fila1_1:
-    st.subheader("Detalle del Cambio/Despliegue")
-    # Agrupamos los 3 datos correspondientes a este bloque
-    texto_detalle = f"""{res["detalle_cambio"]}
+        st.divider()
+        st.header("3. Confirmación y Descarga Unificada")
+
+        st.download_button(
+            label="📦 DESCARGAR TODOS LOS ARCHIVOS (.ZIP)",
+            data=res["zip_data"],
+            file_name=res["zip_name"],
+            mime="application/zip",
+            type="primary",
+        )
+
+        st.divider()
+        st.header("Información adicional")
+
+        # --- FILA 1 ---
+        col_fila1_1, col_fila1_2 = st.columns(2)
+
+        with col_fila1_1:
+            st.subheader("Detalle del Cambio/Despliegue")
+            # Agrupamos los 3 datos correspondientes a este bloque
+            texto_detalle = f"""{res["detalle_cambio"]}
 
 PLAN DE EJECUCIÓN
 {res["plan_ejecucion"]}
 
 PLAN DE REVERSIÓN (Roll-back)
 {res["plan_reversion"]}"""
-    st.code(texto_detalle, language="text")
+            st.code(texto_detalle, language="text")
 
-  with col_fila1_2:
-    st.subheader("Descripción del cambio")
-    st.code(res["descripcion_cambio"], language="text")
+        with col_fila1_2:
+            st.subheader("Descripción del cambio")
+            st.code(res["descripcion_cambio"], language="text")
 
-  # --- FILA 2 ---
-  col_fila2_1, col_fila2_2 = st.columns(2)
+        # --- FILA 2 ---
+        col_fila2_1, col_fila2_2 = st.columns(2)
 
-  with col_fila2_1:
-    st.subheader("Analista/Especialista responsable del despliegue del cambio")
-    st.code(res["analista_responsable"], language="text")
+        with col_fila2_1:
+            st.subheader("Analista/Especialista responsable del despliegue del cambio")
+            st.code(res["analista_responsable"], language="text")
 
-  with col_fila2_2:
-    st.subheader("¿Existe Riesgo?")
-    st.code("NINGUNO", language="text")
+        with col_fila2_2:
+            st.subheader("¿Existe Riesgo?")
+            st.code("NINGUNO", language="text")
+
+elif opcion == "Proyectos":
+    st.title("Mis Proyectos")
+elif opcion == "Contacto":
+    st.title("Formulario de Contacto")
