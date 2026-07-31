@@ -358,10 +358,12 @@ elif opcion == "Actualizar credenciales":
             "Sube la Solicitud de Cambio (.docx)", type=["docx"]
         )
         ticket_num = st.text_input("Ingresa el N° de Ticket:", placeholder="Ej: 12776")
-
+        user_id = st.text_input("¿Cuál es el ID del usuario?", placeholder="Ej: 3333333")
+        
     with col_right:
         dni_antiguo = st.text_input("¿Cuál es el número de DNI antiguo?", placeholder="Ej: 11111111")
         dni_nuevo = st.text_input("¿Cuál es el número de DNI nuevo?", placeholder="Ej: 22222222")
+
 
     if uploaded_file is not None:
         nombre_esperado = "Solicitud de cambio Estandar - Actualizar credenciales.docx"
@@ -369,6 +371,7 @@ elif opcion == "Actualizar credenciales":
             st.error("⚠️ Por favor, suba un archivo correcto.")
         else:
             st.success("¡Archivo cargado correctamente!")
+
 
 
 
