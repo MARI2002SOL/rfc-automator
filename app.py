@@ -212,30 +212,6 @@ if st.button("🚀 Procesar Todo y Generar Archivos"):
         descripcion_cambio = obtener_valor_exacto(doc, "MOTIVO DEL CAMBIO")
         analista_responsable = obtener_valor_exacto(doc, "Nombre")
 
-#         contenido_txt = f"""INFORMACION ADICIONAL
-
-# Detalle del Cambio/Despliegue:
-# -----------------------------------------------------------------
-# {detalle_cambio}
-
-# PLAN DE EJECUCIÓN
-# {plan_ejecucion}
-
-# PLAN DE REVERSIÓN (Roll-back)
-# {plan_reversion}
-
-# Descripción del cambio:
-# -----------------------------------------------------------------
-# {descripcion_cambio}
-
-# Analista/Especialista responsable del despliegue del cambio:
-# -----------------------------------------------------------------
-# {analista_responsable}
-
-# ¿Existe Riesgo?:
-# -----------------------------------------------------------------
-# NINGUNO
-# """
         buffer_docx = io.BytesIO()
         doc.save(buffer_docx)
         buffer_docx.seek(0)
@@ -272,6 +248,11 @@ if st.button("🚀 Procesar Todo y Generar Archivos"):
             "q_rollback": q_rollback,
             "zip_data": zip_buffer.getvalue(),
             "zip_name": f"RFC_RUC_{ticket_num}.zip",
+            "detalle_cambio": detalle_cambio,
+            "plan_ejecucion": plan_ejecucion,
+            "plan_reversion": plan_reversion,
+            "descripcion_cambio": descripcion_cambio,
+            "analista_responsable": analista_responsable
         }
 
       except Exception as e:
@@ -313,15 +294,18 @@ if st.session_state.resultado_procesado:
   with col_fila1_1:
     st.subheader("Detalle del Cambio/Despliegue")
     # Agrupamos los 3 datos correspondientes a este bloque
-    texto_detalle = f"""{detalle_cambio}
+    texto_detalle = f"""{res["detalle_cambio"]}
 
-    PLAN DE EJECUCIÓN
-    {plan_ejecucion}
+PLAN DE EJECUCIÓN
+{res["plan_ejecucion"]}
 
-    PLAN DE REVERSIÓN (Roll-back)
-    {plan_reversion}"""
+PLAN DE REVERSIÓN (Roll-back)
+{res["plan_reversion"]}"""
     st.code(texto_detalle, language="text")
 
+  with col_fila1_2:
+    st.subheader("Descripción del cambio")
+    st.code(res["descripcion_cambio"], language="text")
   with col_fila1_2:
     st.subheader("Descripción del cambio")
     st.code(f"{descripcion_cambio}", language="text")
@@ -331,7 +315,7 @@ if st.session_state.resultado_procesado:
 
   with col_fila2_1:
     st.subheader("Analista/Especialista responsable del despliegue del cambio")
-    st.code(f"{analista_responsable}", language="text")
+    st.code(res["analista_responsable"], language="text")
 
   with col_fila2_2:
     st.subheader("¿Existe Riesgo?")
