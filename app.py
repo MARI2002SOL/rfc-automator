@@ -158,7 +158,7 @@ st.set_page_config(page_title="Gestor RUC & RFC", page_icon="📄", layout="wide
 with st.sidebar:
     opcion = option_menu(
         menu_title="Menú Principal",  # Título del menú
-        options=["Actualizar/Registrar RUC", "Proyectos", "Contacto"],  # Opciones
+        options=["Actualizar/Registrar RUC", "Actualizar credenciales", "Contacto"],  # Opciones
         icons=["house", "folder", "envelope"],  # Iconos de Bootstrap
         menu_icon="cast",  # Icono del título
         default_index=0,  # Opción seleccionada por defecto
@@ -339,7 +339,17 @@ PLAN DE REVERSIÓN (Roll-back)
             st.subheader("¿Existe Riesgo?")
             st.code("NINGUNO", language="text")
 
-elif opcion == "Proyectos":
-    st.title("Mis Proyectos")
+elif opcion == "Actualizar credenciales":
+    rain(
+    emoji="🪪",
+    font_size=54,
+    falling_speed=5,
+    animation_length=1,
+    )
+    st.session_state.animacion_mostrada = True
+    st.title("🪪 Sistema de Gestión Unificado RUC / RFC")
+
+
+
 elif opcion == "Contacto":
     st.title("Formulario de Contacto")
