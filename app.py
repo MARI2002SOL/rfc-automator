@@ -349,6 +349,27 @@ elif opcion == "Actualizar credenciales":
     st.session_state.animacion_mostrada = True
     st.title("🪪 Sistema de Gestión Unificado RUC / RFC")
 
+    st.header("1. Carga de Archivo y Datos")
+
+    col_left, col_right = st.columns(2)
+
+    with col_left:
+        uploaded_file = st.file_uploader(
+            "Sube la Solicitud de Cambio (.docx)", type=["docx"]
+        )
+        ticket_num = st.text_input("Ingresa el N° de Ticket:", placeholder="Ej: 12776")
+
+    with col_right:
+        dni_antiguo = st.text_input("¿Cuál es el número de DNI antiguo?", placeholder="Ej: 11111111")
+        dni_nuevo = st.text_input("¿Cuál es el número de DNI nuevo?", placeholder="Ej: 22222222")
+
+    if uploaded_file is not None:
+        nombre_esperado = "Solicitud de cambio Estandar - Actualizar credenciales.docx"
+        if "solicitud" not in uploaded_file.name.lower():
+            st.error("⚠️ Por favor, suba un archivo correcto.")
+        else:
+            st.success("¡Archivo cargado correctamente!")
+
 
 
 elif opcion == "Contacto":
