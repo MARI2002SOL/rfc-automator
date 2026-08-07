@@ -700,7 +700,7 @@ elif opcion == "Homologación de exámenes":
                                 "Cod. ROE:",
                                 value=item["codana_roe"],
                                 key=f"roe_{idx}",
-                                placeholder="Ej: Z805300",
+                                placeholder="Ej: PECYQ00",
                             )
                         with c2:
                             item["codana_sequence"] = st.text_input(
