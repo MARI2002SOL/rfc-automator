@@ -572,6 +572,9 @@ elif opcion == "Actualizar credenciales":
 # ---------------------------------------------------------
 # OPCIÓN 3: HOMOLOGACIÓN DE EXÁMENES
 # ---------------------------------------------------------
+# ---------------------------------------------------------
+# OPCIÓN 3: HOMOLOGACIÓN DE EXÁMENES
+# ---------------------------------------------------------
 elif opcion == "Homologación de exámenes":
     st.title("📄 Sistema de Gestión Unificado RFC - Homologación")
 
@@ -590,9 +593,13 @@ elif opcion == "Homologación de exámenes":
             }
         ]
 
+    # CALLBACK: Sincroniza el cambio del checkbox en tiempo real antes de re-renderizar la UI
+    def cambiar_estado_update(posicion):
+        key = f"chk_update_{posicion}"
+        st.session_state.lista_analisis[posicion]["es_update"] = st.session_state[key]
+
     st.header("1. Carga de Archivo y Datos")
 
-    # 1. Ajustamos proporciones: 1 parte para la izquierda, 2 para la derecha
     col_left, col_right = st.columns([1, 2])
 
     # --- COLUMNA IZQUIERDA: CONFIGURACIÓN GENERAL Y RESUMEN ---
@@ -610,9 +617,9 @@ elif opcion == "Homologación de exámenes":
                 key="ticket_homologacion",
             )
 
-        # 2. Rellenamos el espacio con un Resumen en Tiempo Real
+        # Métricas calculadas sobre la fuente única de verdad (lista_analisis)
         total_items = len(st.session_state.lista_analisis)
-        num_updates = sum(1 for item in st.session_state.lista_analisis if item.get("es_update", False))
+        num_updates = sum(1 for item in st.session_state.lista_analisis if item["es_update"])
         num_inserts = total_items - num_updates
 
         with st.container(border=True):
@@ -623,13 +630,12 @@ elif opcion == "Homologación de exámenes":
             if num_updates > 0:
                 st.caption(f"⚡ *Incluye {num_updates} registro(s) tipo UPDATE*")
 
-        # 3. Guía rápida para dar soporte visual
         with st.expander("💡 Guía de llenado", expanded=False):
             st.markdown(
                 """
                 * **INSERT (por defecto):** Ingresa `Cod. ROE` y `Cod. SEQUENCE`.
                 * **UPDATE:** Marca la casilla e ingresa `Cod. Interno`, `SILC Antiguo` y `SILC Nuevo`.
-                * Usa los botones **➕** y **🗑️** para ajustar el número de exámenenes.
+                * Usa los botones **➕** y **🗑️** para ajustar el número de exámenes.
                 """
             )
 
@@ -664,16 +670,20 @@ elif opcion == "Homologación de exámenes":
             st.divider()
 
             for idx, item in enumerate(st.session_state.lista_analisis):
-                # Título dinámico en el expander para fácil identificación
-                tipo_tag = "UPDATE" if item["es_update"] else "INSERT"
+                # Estado actual sincronizado
+                es_update_val = item["es_update"]
+                tipo_tag = "UPDATE" if es_update_val else "INSERT"
+
                 with st.expander(f"Análisis #{idx + 1} — [{tipo_tag}]", expanded=True):
-                    item["es_update"] = st.checkbox(
+                    st.checkbox(
                         "¿Es un UPDATE? (Marcar solo si requiere actualizar)",
-                        value=item["es_update"],
+                        value=es_update_val,
                         key=f"chk_update_{idx}",
+                        on_change=cambiar_estado_update,
+                        args=(idx,),
                     )
 
-                    if not item["es_update"]:
+                    if not es_update_val:
                         c1, c2 = st.columns(2)
                         with c1:
                             item["codana_roe"] = st.text_input(
@@ -712,7 +722,7 @@ elif opcion == "Homologación de exámenes":
                                 key=f"nue_{idx}",
                                 placeholder="Ej: Z902400",
                             )
-
+                            
     st.divider()
     if st.button(
         "🚀 Procesar Homologación y Generar Archivos",
