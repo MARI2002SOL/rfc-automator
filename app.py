@@ -394,8 +394,6 @@ elif opcion == "Actualizar credenciales":
         )
         if not uploaded_file or not ticket_num:
             st.error("Por favor completa todos los campos requeridos.")
-        elif not client:
-            st.error("No se ha configurado 'GEMINI_API_KEY' en los secretos.")
         else:
             with st.spinner("Procesando documento Word y generando queries SQL..."):
                 try:
@@ -451,3 +449,63 @@ elif opcion == "Actualizar credenciales":
 
                 except Exception as e:
                     st.error(f"Error durante el procesamiento: {e}")
+
+    # --- VISTA PREVIA Y DESCARGA EN BLOQUE ---
+    if st.session_state.resultado_procesado:
+        st.divider()
+        st.header("2. Vista Previa de Scripts SQL Generados")
+
+        res = st.session_state.resultado_procesado
+
+        col_p1, col_p2 = st.columns(2)
+        with col_p1:
+            st.subheader("Pase a Producción (PASE)")
+            st.code(res["q_prod"], language="sql")
+
+        with col_p2:
+            st.subheader("Rollback (ROLLBACK)")
+            st.code(res["q_rollback"], language="sql")
+
+        st.divider()
+        st.header("3. Confirmación y Descarga Unificada")
+
+        st.download_button(
+            label="📦 DESCARGAR TODOS LOS ARCHIVOS (.ZIP)",
+            data=res["zip_data"],
+            file_name=res["zip_name"],
+            mime="application/zip",
+            type="primary",
+        )
+
+        st.divider()
+        st.header("Información adicional")
+
+        # --- FILA 1 ---
+        col_fila1_1, col_fila1_2 = st.columns(2)
+
+        with col_fila1_1:
+            st.subheader("Detalle del Cambio/Despliegue")
+            # Agrupamos los 3 datos correspondientes a este bloque
+            texto_detalle = f"""{res["detalle_cambio"]}
+
+PLAN DE EJECUCIÓN
+{res["plan_ejecucion"]}
+
+PLAN DE REVERSIÓN (Roll-back)
+{res["plan_reversion"]}"""
+            st.code(texto_detalle, language="text")
+
+        with col_fila1_2:
+            st.subheader("Descripción del cambio")
+            st.code(res["descripcion_cambio"], language="text")
+
+        # --- FILA 2 ---
+        col_fila2_1, col_fila2_2 = st.columns(2)
+
+        with col_fila2_1:
+            st.subheader("Analista/Especialista responsable del despliegue del cambio")
+            st.code(res["analista_responsable"], language="text")
+
+        with col_fila2_2:
+            st.subheader("¿Existe Riesgo?")
+            st.code("NINGUNO", language="text")
