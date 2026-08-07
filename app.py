@@ -175,7 +175,7 @@ st.set_page_config(page_title="Gestor RUC & RFC", page_icon="📄", layout="wide
 with st.sidebar:
     opcion = option_menu(
         menu_title="Menú Principal",  # Título del menú
-        options=["Actualizar/Registrar RUC", "Actualizar credenciales", "Contacto"],  # Opciones
+        options=["Actualizar/Registrar RUC", "Actualizar credenciales"],  # Opciones
         icons=["house", "folder", "envelope"],  # Iconos de Bootstrap
         menu_icon="cast",  # Icono del título
         default_index=0,  # Opción seleccionada por defecto
