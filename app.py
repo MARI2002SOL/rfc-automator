@@ -573,7 +573,7 @@ elif opcion == "Actualizar credenciales":
 # OPCIÓN 3: HOMOLOGACIÓN DE EXÁMENES
 # ---------------------------------------------------------
 elif opcion == "Homologación de exámenes":
-st.title("📄 Sistema de Gestión Unificado RFC - Homologación")
+    st.title("📄 Sistema de Gestión Unificado RFC - Homologación")
 
     if "resultado_procesado_homo" not in st.session_state:
         st.session_state.resultado_procesado_homo = None
