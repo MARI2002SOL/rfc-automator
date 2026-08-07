@@ -360,7 +360,7 @@ PLAN DE REVERSIÓN (Roll-back)
 elif opcion == "Actualizar credenciales":
 
     st.session_state.animacion_mostrada = True
-    st.title("🪪 Sistema de Gestión Unificado RUC")
+    st.title("🪪 Sistema de Gestión Unificado RUC / RFC")
 
     st.header("1. Carga de Archivo y Datos")
 
@@ -549,7 +549,7 @@ PLAN DE REVERSIÓN (Roll-back)
 elif opcion == "Homologación de exámenes":
 
     st.session_state.animacion_mostrada = True
-    st.title("🧪 Sistema de Gestión Unificado RFC - Homologación")
+    st.title("📄 Sistema de Gestión Unificado RFC - Homologación")
 
     # 1. Inicializar Session State para la lista dinámica de análisis
     if "resultado_procesado" not in st.session_state:
