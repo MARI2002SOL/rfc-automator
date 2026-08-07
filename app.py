@@ -713,6 +713,15 @@ elif opcion == "Homologación de exámenes":
                         c1, c2, c3 = st.columns(3)
 
                         with c1:
+                            item["codigo_externo_nuevo"] = st.text_input(
+                                "Cod. SEQUENCE nuevo:",
+                                value=item["codigo_externo_nuevo"],
+                                key=f"nue_{idx}",
+                                placeholder="Ej: Z902400",
+                            )
+
+
+                        with c2:
                             item["codigo_silc"] = st.text_input(
                                 "Código SILC:",
                                 value=item["codigo_silc"],
@@ -720,20 +729,13 @@ elif opcion == "Homologación de exámenes":
                                 placeholder="Ej: PXTL000",
                             )
 
-                        with c2:
+                        with c3:
+
                             item["codigo_externo_antiguo"] = st.text_input(
                                 "Cod. SEQUENCE antiguo:",
                                 value=item["codigo_externo_antiguo"],
                                 key=f"ant_{idx}",
                                 placeholder="Ej: Z805300",
-                            )
-
-                        with c3:
-                            item["codigo_externo_nuevo"] = st.text_input(
-                                "Cod. SEQUENCE nuevo:",
-                                value=item["codigo_externo_nuevo"],
-                                key=f"nue_{idx}",
-                                placeholder="Ej: Z902400",
                             )
                             
     st.divider()
