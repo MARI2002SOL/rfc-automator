@@ -392,7 +392,7 @@ elif opcion == "Actualizar credenciales":
         falling_speed=5,
         animation_length=1,
         )
-        if not uploaded_file or not ticket_num or not texto_ruc:
+        if not uploaded_file or not ticket_num:
             st.error("Por favor completa todos los campos requeridos.")
         elif not client:
             st.error("No se ha configurado 'GEMINI_API_KEY' en los secretos.")
