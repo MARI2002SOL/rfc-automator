@@ -653,9 +653,9 @@ elif opcion == "Homologación de exámenes":
                             "es_update": False,
                             "codana_roe": "",
                             "codana_sequence": "",
-                            "codigo_interno": "",
-                            "silc_antiguo": "",
-                            "silc_nuevo": "",
+                            "codigo_externo_nuevo": "",
+                            "codigo_silc": "",
+                            "codigo_externo_antiguo": "",
                         }
                     )
                     st.rerun()
@@ -702,25 +702,27 @@ elif opcion == "Homologación de exámenes":
                             )
                     else:
                         c1, c2, c3 = st.columns(3)
-                        with c1:
-                            item["codigo_externo_nuevo"] = st.text_input(
 
-                                "Cod. SEQUENCE nuevo:",
-                                value=item["codigo_externo_nuevo"],
-                                key=f"int_{idx}",
-                                placeholder="Ej: PXTL000",
-                            )
-                        with c2:
+                        with c1:
                             item["codigo_silc"] = st.text_input(
                                 "Código SILC:",
                                 value=item["codigo_silc"],
-                                key=f"ant_{idx}",
-                                placeholder="Ej: Z805300",
+                                key=f"int_{idx}",
+                                placeholder="Ej: PXTL000",
                             )
-                        with c3:
+
+                        with c2:
                             item["codigo_externo_antiguo"] = st.text_input(
                                 "Cod. SEQUENCE antiguo:",
                                 value=item["codigo_externo_antiguo"],
+                                key=f"ant_{idx}",
+                                placeholder="Ej: Z805300",
+                            )
+
+                        with c3:
+                            item["codigo_externo_nuevo"] = st.text_input(
+                                "Cod. SEQUENCE nuevo:",
+                                value=item["codigo_externo_nuevo"],
                                 key=f"nue_{idx}",
                                 placeholder="Ej: Z902400",
                             )
