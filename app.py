@@ -147,6 +147,21 @@ def generar_queries_sql_con_gemini(
     return q_prod, q_roll
 
 
+def generar_query_actualizacion_usuario(dni, id_usuario):
+    """
+    Genera el script SQL para actualizar el usuario y contraseña temporal.
+    """
+    query = f"""use labroe_new
+go
+
+-- COLOCAR DNI ACTUAL DEL USUARIO
+update x set x.usuario = '{dni}', x.contrasena_temporal = '{dni}'
+from RoeRestService.usuario_web x
+-- COLOCAR ID DEL USUARIO
+where x.id_usuario = {id_usuario}
+go"""
+
+    return query
 
 
 # ==========================================
@@ -343,12 +358,7 @@ PLAN DE REVERSIÓN (Roll-back)
             st.code("NINGUNO", language="text")
 
 elif opcion == "Actualizar credenciales":
-    rain(
-    emoji="🪪",
-    font_size=54,
-    falling_speed=5,
-    animation_length=1,
-    )
+
     st.session_state.animacion_mostrada = True
     st.title("🪪 Sistema de Gestión Unificado RUC / RFC")
 
@@ -374,8 +384,70 @@ elif opcion == "Actualizar credenciales":
         else:
             st.success("¡Archivo cargado correctamente!")
 
+    # --- BOTÓN DE PROCESAMIENTO ---
+    if st.button("🚀 Procesar Todo y Generar Archivos"):
+        rain(
+        emoji="🪪",
+        font_size=54,
+        falling_speed=5,
+        animation_length=1,
+        )
+        if not uploaded_file or not ticket_num or not texto_ruc:
+            st.error("Por favor completa todos los campos requeridos.")
+        elif not client:
+            st.error("No se ha configurado 'GEMINI_API_KEY' en los secretos.")
+        else:
+            with st.spinner("Procesando documento Word y generando queries SQL..."):
+                try:
+                    # 1. Procesar Word y TXT
+                    doc = docx.Document(uploaded_file)
+                    fecha_actual = datetime.now().strftime("%d/%m/%Y")
+                    reemplazos = {"[FECHA DE HOY]": fecha_actual, "TICKETNUM": ticket_num}
+                    reemplazar_manteniendo_formato(doc, reemplazos)
+
+                    detalle_cambio = obtener_valor_exacto(doc, "Descripción")
+                    plan_ejecucion = obtener_tarea_plan(doc, "ejecución")
+                    plan_reversion = obtener_tarea_plan(doc, "PLAN DE REVERSIÓN")
+                    descripcion_cambio = obtener_valor_exacto(doc, "MOTIVO DEL CAMBIO")
+                    analista_responsable = obtener_valor_exacto(doc, "Nombre")
+
+                    buffer_docx = io.BytesIO()
+                    doc.save(buffer_docx)
+                    buffer_docx.seek(0)
+
+                    # 2. Generar SQL mediante Gemini AI
+                    q_prod = generar_query_actualizacion_usuario(dni_nuevo, user_id)
+                    q_rollback = generar_query_actualizacion_usuario(dni_antiguo, user_id)
+
+                    # Nombres dinámicos de archivos
+                    nombre_docx_out = f"{uploaded_file.name.replace('.docx', '')}_{ticket_num}.docx"
+                    nom_prod = f"({ticket_num})_paseprod.sql"
+                    nom_roll = f"({ticket_num})_rollback.sql"
 
 
+                    # 3. Crear paquete ZIP con TODOS los archivos
+                    zip_buffer = io.BytesIO()
+                    with zipfile.ZipFile(
+                        zip_buffer, "w", zipfile.ZIP_DEFLATED
+                    ) as zip_file:
+                        zip_file.writestr(nombre_docx_out, buffer_docx.getvalue())
+                        zip_file.writestr(nom_prod, q_prod)
+                        zip_file.writestr(nom_roll, q_rollback)
 
-elif opcion == "Contacto":
-    st.title("Formulario de Contacto")
+                    zip_buffer.seek(0)
+
+                    # Guardar resultados en Session State
+                    st.session_state.resultado_procesado = {
+                        "q_prod": q_prod,
+                        "q_rollback": q_rollback,
+                        "zip_data": zip_buffer.getvalue(),
+                        "zip_name": f"RFC_RUC_{ticket_num}.zip",
+                        "detalle_cambio": detalle_cambio,
+                        "plan_ejecucion": plan_ejecucion,
+                        "plan_reversion": plan_reversion,
+                        "descripcion_cambio": descripcion_cambio,
+                        "analista_responsable": analista_responsable
+                    }
+
+                except Exception as e:
+                    st.error(f"Error durante el procesamiento: {e}")
