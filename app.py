@@ -573,7 +573,7 @@ elif opcion == "Actualizar credenciales":
 # OPCIÓN 3: HOMOLOGACIÓN DE EXÁMENES
 # ---------------------------------------------------------
 elif opcion == "Homologación de exámenes":
-    st.title("📄 Sistema de Gestión Unificado RFC - Homologación")
+st.title("📄 Sistema de Gestión Unificado RFC - Homologación")
 
     if "resultado_procesado_homo" not in st.session_state:
         st.session_state.resultado_procesado_homo = None
@@ -591,95 +591,127 @@ elif opcion == "Homologación de exámenes":
         ]
 
     st.header("1. Carga de Archivo y Datos")
-    col_left, col_right = st.columns([1, 1])
 
+    # 1. Ajustamos proporciones: 1 parte para la izquierda, 2 para la derecha
+    col_left, col_right = st.columns([1, 2])
+
+    # --- COLUMNA IZQUIERDA: CONFIGURACIÓN GENERAL Y RESUMEN ---
     with col_left:
-        uploaded_file = st.file_uploader(
-            "Sube la Solicitud de Cambio (.docx)",
-            type=["docx"],
-            key="file_homologacion",
-        )
-        ticket_num = st.text_input(
-            "Ingresa el N° de Ticket:",
-            placeholder="Ej: 12776",
-            key="ticket_homologacion",
-        )
+        with st.container(border=True):
+            st.subheader("📋 Datos del Ticket")
+            uploaded_file = st.file_uploader(
+                "Sube la Solicitud de Cambio (.docx)",
+                type=["docx"],
+                key="file_homologacion",
+            )
+            ticket_num = st.text_input(
+                "Ingresa el N° de Ticket:",
+                placeholder="Ej: 12776",
+                key="ticket_homologacion",
+            )
 
+        # 2. Rellenamos el espacio con un Resumen en Tiempo Real
+        total_items = len(st.session_state.lista_analisis)
+        num_updates = sum(1 for item in st.session_state.lista_analisis if item.get("es_update", False))
+        num_inserts = total_items - num_updates
+
+        with st.container(border=True):
+            st.subheader("📊 Resumen a Procesar")
+            m1, m2 = st.columns(2)
+            m1.metric("Total Análisis", total_items)
+            m2.metric("N° Inserts", num_inserts)
+            if num_updates > 0:
+                st.caption(f"⚡ *Incluye {num_updates} registro(s) tipo UPDATE*")
+
+        # 3. Guía rápida para dar soporte visual
+        with st.expander("💡 Guía de llenado", expanded=False):
+            st.markdown(
+                """
+                * **INSERT (por defecto):** Ingresa `Cod. ROE` y `Cod. SEQUENCE`.
+                * **UPDATE:** Marca la casilla e ingresa `Cod. Interno`, `SILC Antiguo` y `SILC Nuevo`.
+                * Usa los botones **➕** y **🗑️** para ajustar el número de exámenenes.
+                """
+            )
+
+    # --- COLUMNA DERECHA: REGISTRO DINÁMICO DE ANÁLISIS ---
     with col_right:
-        st.subheader("🧪 Análisis a Homologar")
+        with st.container(border=True):
+            st.subheader("🧪 Análisis a Homologar")
 
-        col_btn1, col_btn2 = st.columns(2)
-        with col_btn1:
-            if st.button("➕ Agregar Análisis", key="btn_add_analisis"):
-                st.session_state.lista_analisis.append(
-                    {
-                        "es_update": False,
-                        "codana_roe": "",
-                        "codana_sequence": "",
-                        "codigo_interno": "",
-                        "silc_antiguo": "",
-                        "silc_nuevo": "",
-                    }
-                )
-                st.rerun()
+            col_btn1, col_btn2 = st.columns(2)
+            with col_btn1:
+                if st.button("➕ Agregar Análisis", key="btn_add_analisis", use_container_width=True):
+                    st.session_state.lista_analisis.append(
+                        {
+                            "es_update": False,
+                            "codana_roe": "",
+                            "codana_sequence": "",
+                            "codigo_interno": "",
+                            "silc_antiguo": "",
+                            "silc_nuevo": "",
+                        }
+                    )
+                    st.rerun()
 
-        with col_btn2:
-            if (
-                st.button("🗑️ Quitar Último", key="btn_del_analisis")
-                and len(st.session_state.lista_analisis) > 1
-            ):
-                st.session_state.lista_analisis.pop()
-                st.rerun()
+            with col_btn2:
+                if (
+                    st.button("🗑️ Quitar Último", key="btn_del_analisis", use_container_width=True)
+                    and len(st.session_state.lista_analisis) > 1
+                ):
+                    st.session_state.lista_analisis.pop()
+                    st.rerun()
 
-        st.divider()
+            st.divider()
 
-        for idx, item in enumerate(st.session_state.lista_analisis):
-            with st.expander(f"Análisis #{idx + 1}", expanded=True):
-                item["es_update"] = st.checkbox(
-                    "¿Es un UPDATE? (Marcar solo si requiere actualizar)",
-                    value=item["es_update"],
-                    key=f"chk_update_{idx}",
-                )
+            for idx, item in enumerate(st.session_state.lista_analisis):
+                # Título dinámico en el expander para fácil identificación
+                tipo_tag = "UPDATE" if item["es_update"] else "INSERT"
+                with st.expander(f"Análisis #{idx + 1} — [{tipo_tag}]", expanded=True):
+                    item["es_update"] = st.checkbox(
+                        "¿Es un UPDATE? (Marcar solo si requiere actualizar)",
+                        value=item["es_update"],
+                        key=f"chk_update_{idx}",
+                    )
 
-                if not item["es_update"]:
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        item["codana_roe"] = st.text_input(
-                            "Cod. ROE:",
-                            value=item["codana_roe"],
-                            key=f"roe_{idx}",
-                            placeholder="Ej: Z805300",
-                        )
-                    with c2:
-                        item["codana_sequence"] = st.text_input(
-                            "Cod. SEQUENCE:",
-                            value=item["codana_sequence"],
-                            key=f"seq_{idx}",
-                            placeholder="Ej: Z902400",
-                        )
-                else:
-                    c1, c2, c3 = st.columns(3)
-                    with c1:
-                        item["codigo_interno"] = st.text_input(
-                            "Cod. Interno:",
-                            value=item["codigo_interno"],
-                            key=f"int_{idx}",
-                            placeholder="Ej: PXTL000",
-                        )
-                    with c2:
-                        item["silc_antiguo"] = st.text_input(
-                            "SILC Antiguo:",
-                            value=item["silc_antiguo"],
-                            key=f"ant_{idx}",
-                            placeholder="Ej: Z805300",
-                        )
-                    with c3:
-                        item["silc_nuevo"] = st.text_input(
-                            "SILC Nuevo:",
-                            value=item["silc_nuevo"],
-                            key=f"nue_{idx}",
-                            placeholder="Ej: Z902400",
-                        )
+                    if not item["es_update"]:
+                        c1, c2 = st.columns(2)
+                        with c1:
+                            item["codana_roe"] = st.text_input(
+                                "Cod. ROE:",
+                                value=item["codana_roe"],
+                                key=f"roe_{idx}",
+                                placeholder="Ej: Z805300",
+                            )
+                        with c2:
+                            item["codana_sequence"] = st.text_input(
+                                "Cod. SEQUENCE:",
+                                value=item["codana_sequence"],
+                                key=f"seq_{idx}",
+                                placeholder="Ej: Z902400",
+                            )
+                    else:
+                        c1, c2, c3 = st.columns(3)
+                        with c1:
+                            item["codigo_interno"] = st.text_input(
+                                "Cod. Interno:",
+                                value=item["codigo_interno"],
+                                key=f"int_{idx}",
+                                placeholder="Ej: PXTL000",
+                            )
+                        with c2:
+                            item["silc_antiguo"] = st.text_input(
+                                "SILC Antiguo:",
+                                value=item["silc_antiguo"],
+                                key=f"ant_{idx}",
+                                placeholder="Ej: Z805300",
+                            )
+                        with c3:
+                            item["silc_nuevo"] = st.text_input(
+                                "SILC Nuevo:",
+                                value=item["silc_nuevo"],
+                                key=f"nue_{idx}",
+                                placeholder="Ej: Z902400",
+                            )
 
     st.divider()
     if st.button(
