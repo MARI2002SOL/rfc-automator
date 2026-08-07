@@ -185,9 +185,9 @@ def generar_queries_homologacion(lista_analisis, ticket_num):
                 )
         else:
             # CASO UPDATE
-            cod_int = item.get("codigo_interno", "").strip()
-            antiguo = item.get("silc_antiguo", "").strip()
-            nuevo = item.get("silc_nuevo", "").strip()
+            cod_int = item.get("codigo_externo_nuevo", "").strip()
+            antiguo = item.get("codigo_silc", "").strip()
+            nuevo = item.get("codigo_externo_antiguo", "").strip()
             if antiguo and nuevo:
                 lines_pase.append(f"-- CASO {idx}: SOLO UPDATE")
                 lines_pase.append(
@@ -587,9 +587,9 @@ elif opcion == "Homologación de exámenes":
                 "es_update": False,
                 "codana_roe": "",
                 "codana_sequence": "",
-                "codigo_interno": "",
-                "silc_antiguo": "",
-                "silc_nuevo": "",
+                "codigo_externo_nuevo": "",
+                "codigo_silc": "",
+                "codigo_externo_antiguo": "",
             }
         ]
 
@@ -624,9 +624,10 @@ elif opcion == "Homologación de exámenes":
 
         with st.container(border=True):
             st.subheader("📊 Resumen a Procesar")
-            m1, m2 = st.columns(2)
+            m1, m2, m3 = st.columns(3)
             m1.metric("Total Análisis", total_items)
             m2.metric("N° Inserts", num_inserts)
+            m3.metric("N° Updates", num_updates)
             if num_updates > 0:
                 st.caption(f"⚡ *Incluye {num_updates} registro(s) tipo UPDATE*")
 
@@ -702,23 +703,24 @@ elif opcion == "Homologación de exámenes":
                     else:
                         c1, c2, c3 = st.columns(3)
                         with c1:
-                            item["codigo_interno"] = st.text_input(
-                                "Cod. Interno:",
-                                value=item["codigo_interno"],
+                            item["codigo_externo_nuevo"] = st.text_input(
+
+                                "Cod. SEQUENCE nuevo:",
+                                value=item["codigo_externo_nuevo"],
                                 key=f"int_{idx}",
                                 placeholder="Ej: PXTL000",
                             )
                         with c2:
-                            item["silc_antiguo"] = st.text_input(
-                                "SILC Antiguo:",
-                                value=item["silc_antiguo"],
+                            item["codigo_silc"] = st.text_input(
+                                "Código SILC:",
+                                value=item["codigo_silc"],
                                 key=f"ant_{idx}",
                                 placeholder="Ej: Z805300",
                             )
                         with c3:
-                            item["silc_nuevo"] = st.text_input(
-                                "SILC Nuevo:",
-                                value=item["silc_nuevo"],
+                            item["codigo_externo_antiguo"] = st.text_input(
+                                "Cod. SEQUENCE antiguo:",
+                                value=item["codigo_externo_antiguo"],
                                 key=f"nue_{idx}",
                                 placeholder="Ej: Z902400",
                             )
