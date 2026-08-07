@@ -185,7 +185,7 @@ def generar_queries_homologacion(lista_analisis, ticket_num):
                 )
         else:
             # CASO UPDATE
-            cod_int = item.get("codigo_interno", "PXTL000").strip()
+            cod_int = item.get("codigo_interno", "").strip()
             antiguo = item.get("silc_antiguo", "").strip()
             nuevo = item.get("silc_nuevo", "").strip()
             if antiguo and nuevo:
@@ -584,7 +584,7 @@ elif opcion == "Homologación de exámenes":
                 "es_update": False,
                 "codana_roe": "",
                 "codana_sequence": "",
-                "codigo_interno": "PXTL000",
+                "codigo_interno": "",
                 "silc_antiguo": "",
                 "silc_nuevo": "",
             }
@@ -616,7 +616,7 @@ elif opcion == "Homologación de exámenes":
                         "es_update": False,
                         "codana_roe": "",
                         "codana_sequence": "",
-                        "codigo_interno": "PXTL000",
+                        "codigo_interno": "",
                         "silc_antiguo": "",
                         "silc_nuevo": "",
                     }
@@ -664,7 +664,7 @@ elif opcion == "Homologación de exámenes":
                             "Cod. Interno:",
                             value=item["codigo_interno"],
                             key=f"int_{idx}",
-                            placeholder="PXTL000",
+                            placeholder="Ej: PXTL000",
                         )
                     with c2:
                         item["silc_antiguo"] = st.text_input(
