@@ -724,8 +724,8 @@ elif opcion == "Homologación de exámenes":
                     )
 
                     nombre_docx_out = f"{uploaded_file.name.replace('.docx', '')}_{ticket_num}.docx"
-                    nom_prod = f"({ticket_num})_homologacion_paseprod.sql"
-                    nom_roll = f"({ticket_num})_homologacion_rollback.sql"
+                    nom_prod = f"{ticket_num}_homologacion_paseprod.sql"
+                    nom_roll = f"{ticket_num}_homologacion_rollback.sql"
 
                     zip_buffer = io.BytesIO()
                     with zipfile.ZipFile(
