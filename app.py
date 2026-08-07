@@ -185,18 +185,27 @@ def generar_queries_homologacion(lista_analisis, ticket_num):
                 )
         else:
             # CASO UPDATE
-            cod_int = item.get("codigo_externo_nuevo", "").strip()
-            antiguo = item.get("codigo_silc", "").strip()
-            nuevo = item.get("codigo_externo_antiguo", "").strip()
-            if antiguo and nuevo:
-                lines_pase.append(f"-- CASO {idx}: SOLO UPDATE")
+            cod_interno = item.get("codigo_silc", "").strip()
+            cod_ext_antiguo = item.get("codigo_externo_antiguo", "").strip()
+            cod_ext_nuevo = item.get("codigo_externo_nuevo", "").strip()
+
+            if cod_interno and cod_ext_antiguo and cod_ext_nuevo:
+                # --- QUERY PASE A PRODUCCIÓN ---
+                lines_pase.append(f"-- CASO {idx}: UPDATE HOMOLOGACIÓN")
                 lines_pase.append(
-                    f"UPDATE interface\nSET id_codigo_externo = '{nuevo}'\nWHERE id_codigo_interno = '{cod_int}' \n  AND id_codigo_externo = '{antiguo}';\n"
+                    "UPDATE interface\n"
+                    f"SET id_codigo_externo = '{cod_ext_nuevo}'\n"
+                    f"WHERE id_codigo_interno = '{cod_interno}'\n"
+                    f"  AND id_codigo_externo = '{cod_ext_antiguo}';\n"
                 )
 
-                lines_roll.append(f"-- ROLLBACK CASO {idx}: REVERT UPDATE")
+            # --- QUERY ROLLBACK ---
+                lines_roll.append(f"-- ROLLBACK CASO {idx}: REVERSIÓN UPDATE")
                 lines_roll.append(
-                    f"UPDATE interface\nSET id_codigo_externo = '{antiguo}'\nWHERE id_codigo_interno = '{cod_int}' \n  AND id_codigo_externo = '{nuevo}';\n"
+                    "UPDATE interface\n"
+                    f"SET id_codigo_externo = '{cod_ext_antiguo}'\n"
+                    f"WHERE id_codigo_interno = '{cod_interno}'\n"
+                    f"  AND id_codigo_externo = '{cod_ext_nuevo}';\n"
                 )
 
     lines_pase.append("GO")
