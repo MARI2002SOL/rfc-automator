@@ -175,7 +175,7 @@ st.set_page_config(page_title="Gestor RUC & RFC", page_icon="📄", layout="wide
 with st.sidebar:
     opcion = option_menu(
         menu_title="Menú Principal",  # Título del menú
-        options=["Actualizar/Registrar RUC", "Actualizar credenciales"],  # Opciones
+        options=["Actualizar/Registrar RUC", "Actualizar credenciales", "Homologación de exámenes"],  # Opciones
         icons=["house", "folder", "envelope"],  # Iconos de Bootstrap
         menu_icon="cast",  # Icono del título
         default_index=0,  # Opción seleccionada por defecto
@@ -360,7 +360,7 @@ PLAN DE REVERSIÓN (Roll-back)
 elif opcion == "Actualizar credenciales":
 
     st.session_state.animacion_mostrada = True
-    st.title("🪪 Sistema de Gestión Unificado RUC / RFC")
+    st.title("🪪 Sistema de Gestión Unificado RUC")
 
     st.header("1. Carga de Archivo y Datos")
 
@@ -451,7 +451,43 @@ elif opcion == "Actualizar credenciales":
                     st.error(f"Error durante el procesamiento: {e}")
 
     # --- VISTA PREVIA Y DESCARGA EN BLOQUE ---
+    if st.session_state.    # --- VISTA PREVIA Y DESCARGA EN BLOQUE ---
     if st.session_state.resultado_procesado:
+        st.divider()
+        st.header("2. Vista Previa de Scripts SQL Generados")
+
+        res = st.session_state.resultado_procesado
+
+        col_p1, col_p2 = st.columns(2)
+        with col_p1:
+            st.subheader("Pase a Producción (PASE)")
+            st.code(res["q_prod"], language="sql")
+
+        with col_p2:
+            st.subheader("Rollback (ROLLBACK)")
+            st.code(res["q_rollback"], language="sql")
+
+        st.divider()
+        st.header("3. Confirmación y Descarga Unificada")
+
+        st.download_button(
+            label="📦 DESCARGAR TODOS LOS ARCHIVOS (.ZIP)",
+            data=res["zip_data"],
+            file_name=res["zip_name"],
+            mime="application/zip",
+            type="primary",
+        )
+
+        st.divider()
+        st.header("Información adicional")
+
+        # --- FILA 1 ---
+        col_fila1_1, col_fila1_2 = st.columns(2)
+
+        with col_fila1_1:
+            st.subheader("Detalle del Cambio/Despliegue")
+            # Agrupamos los 3 datos correspondientes a este bloque
+            texto_detalle = f"""{res["detalle_cambio"]}:
         st.divider()
         st.header("2. Vista Previa de Scripts SQL Generados")
 
@@ -509,3 +545,136 @@ PLAN DE REVERSIÓN (Roll-back)
         with col_fila2_2:
             st.subheader("¿Existe Riesgo?")
             st.code("NINGUNO", language="text")
+
+elif opcion == "Homologación de exámenes":
+
+    st.session_state.animacion_mostrada = True
+    st.title("🧪 Sistema de Gestión Unificado RFC - Homologación")
+
+    # 1. Inicializar Session State para la lista dinámica de análisis
+    if "resultado_procesado" not in st.session_state:
+        st.session_state.resultado_procesado = None
+
+    if "lista_analisis" not in st.session_state:
+        # Iniciamos con 1 elemento por defecto
+        st.session_state.lista_analisis = [
+            {
+                "es_update": False,
+                "codana_roe": "",
+                "codana_sequence": "",
+                "codigo_interno": "PXTL000",
+                "silc_antiguo": "",
+                "silc_nuevo": "",
+            }
+        ]
+
+    # --- ENTRADA DE DATOS ---
+    st.header("1. Carga de Archivo y Datos")
+
+    col_left, col_right = st.columns([1, 1])
+
+    # --- COLUMNA IZQUIERDA: ARCHIVO Y TICKET ---
+    with col_left:
+        uploaded_file = st.file_uploader(
+            "Sube la Solicitud de Cambio (.docx)",
+            type=["docx"],
+            key="file_homologacion",
+        )
+        ticket_num = st.text_input(
+            "Ingresa el N° de Ticket:",
+            placeholder="Ej: 12776",
+            key="ticket_homologacion",
+        )
+
+    # --- COLUMNA DERECHA: REGISTRO DINÁMICO DE ANÁLISIS ---
+    with col_right:
+        st.subheader("🧪 Análisis a Homologar")
+
+        # Botones para agregar o quitar filas dinámicamente
+        col_btn1, col_btn2 = st.columns(2)
+        with col_btn1:
+            if st.button("➕ Agregar Análisis", key="btn_add_analisis"):
+                st.session_state.lista_analisis.append(
+                    {
+                        "es_update": False,
+                        "codana_roe": "",
+                        "codana_sequence": "",
+                        "codigo_interno": "PXTL000",
+                        "silc_antiguo": "",
+                        "silc_nuevo": "",
+                    }
+                )
+                st.rerun()
+
+        with col_btn2:
+            if (
+                st.button("🗑️ Quitar Último", key="btn_del_analisis")
+                and len(st.session_state.lista_analisis) > 1
+            ):
+                st.session_state.lista_analisis.pop()
+                st.rerun()
+
+        st.divider()
+
+        # Renderizar cada análisis según su posición
+        for idx, item in enumerate(st.session_state.lista_analisis):
+            with st.expander(f"Análisis #{idx + 1}", expanded=True):
+
+                # Checkbox: desmarcado = INSERT (por defecto), marcado = UPDATE
+                item["es_update"] = st.checkbox(
+                    "¿Es un UPDATE? (Marcar solo si requiere actualizar)",
+                    value=item["es_update"],
+                    key=f"chk_update_{idx}",
+                )
+
+                # --- CAMPOS SI ES INSERT ---
+                if not item["es_update"]:
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        item["codana_roe"] = st.text_input(
+                            "Cod. ROE:",
+                            value=item["codana_roe"],
+                            key=f"roe_{idx}",
+                            placeholder="Ej: Z805300",
+                        )
+                    with c2:
+                        item["codana_sequence"] = st.text_input(
+                            "Cod. SEQUENCE:",
+                            value=item["codana_sequence"],
+                            key=f"seq_{idx}",
+                            placeholder="Ej: Z902400",
+                        )
+
+                # --- CAMPOS SI ES UPDATE ---
+                else:
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        item["codigo_interno"] = st.text_input(
+                            "Cod. Interno:",
+                            value=item["codigo_interno"],
+                            key=f"int_{idx}",
+                            placeholder="PXTL000",
+                        )
+                    with c2:
+                        item["silc_antiguo"] = st.text_input(
+                            "SILC Antiguo:",
+                            value=item["silc_antiguo"],
+                            key=f"ant_{idx}",
+                            placeholder="Ej: Z805300",
+                        )
+                    with c3:
+                        item["silc_nuevo"] = st.text_input(
+                            "SILC Nuevo:",
+                            value=item["silc_nuevo"],
+                            key=f"nue_{idx}",
+                            placeholder="Ej: Z902400",
+                        )
+
+    # --- BOTÓN DE PROCESAMIENTO ---
+    st.divider()
+    if st.button(
+        "🚀 Procesar Homologación", key="btn_procesar_homologacion", type="primary"
+    ):
+        st.info(
+            "Datos capturados correctamente. Puedes proceder a construir la lógica del SQL."
+        )
