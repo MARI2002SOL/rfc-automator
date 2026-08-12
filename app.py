@@ -256,7 +256,7 @@ if opcion == "Actualizar/Registrar RUC":
 
     with col_right:
         texto_ruc = st.text_area(
-            "Pega la Consulta RUC copiada de [SUNAT]: (https://e-consultaruc.sunat.gob.pe/cl-ti-itmrconsruc/FrameCriterioBusquedaWeb.jsp)",
+            "Pega la Consulta RUC copiada de [SUNAT](https://e-consultaruc.sunat.gob.pe/cl-ti-itmrconsruc/FrameCriterioBusquedaWeb.jsp):",
             height=180,
             key="txt_ruc",
         )
